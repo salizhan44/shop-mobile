@@ -4,6 +4,7 @@
     "slug": "shop-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
+    "backgroundColor": "#ffffff",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "ios": {

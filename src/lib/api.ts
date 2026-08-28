@@ -230,3 +230,151 @@ export async function removeCartItem(itemId: string): Promise<CartPublic> {
   );
 }
 
+export type OrderLinePublic = {
+  id: string;
+  productId: string;
+  productName: string;
+  priceCents: number;
+  quantity: number;
+  lineTotalCents: number;
+};
+
+export type OrderPublic = {
+  id: string;
+  status: "PENDING" | "CONFIRMED" | "REJECTED";
+  totalCents: number;
+  rejectionReason: string | null;
+  items: OrderLinePublic[];
+  createdAt: string;
+};
+
+function isOrderPublic(value: unknown): value is OrderPublic {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const body = value as {
+    id?: unknown;
+    status?: unknown;
+    totalCents?: unknown;
+    items?: unknown;
+    createdAt?: unknown;
+  };
+  return (
+    typeof body.id === "string" &&
+    typeof body.status === "string" &&
+    typeof body.totalCents === "number" &&
+    Array.isArray(body.items) &&
+    typeof body.createdAt === "string"
+  );
+}
+
+export async function checkoutOrder(): Promise<OrderPublic> {
+  const response = await authorizedFetch("/api/orders", {
+    method: "POST",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось оформить заказ"));
+  }
+  if (!isOrderPublic(data)) {
+    throw new Error("Некорректный ответ заказа");
+  }
+  return data;
+}
+
+function isOrdersList(value: unknown): value is { orders: OrderPublic[] } {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const body = value as { orders?: unknown };
+  if (!Array.isArray(body.orders)) {
+    return false;
+  }
+  return body.orders.every((item) => isOrderPublic(item));
+}
+
+export async function fetchMyOrders(): Promise<OrderPublic[]> {
+  const response = await authorizedFetch("/api/orders");
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось загрузить заказы"));
+  }
+  if (!isOrdersList(data)) {
+    throw new Error("Некорректный ответ заказов");
+  }
+  return data.orders;
+}
+
+export type SupportTicketPublic = {
+  id: string;
+  subject: string;
+  body: string;
+  status: "OPEN" | "CLOSED";
+  staffReply: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+function isSupportTicketPublic(value: unknown): value is SupportTicketPublic {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const body = value as {
+    id?: unknown;
+    subject?: unknown;
+    body?: unknown;
+    status?: unknown;
+    createdAt?: unknown;
+  };
+  return (
+    typeof body.id === "string" &&
+    typeof body.subject === "string" &&
+    typeof body.body === "string" &&
+    typeof body.status === "string" &&
+    typeof body.createdAt === "string"
+  );
+}
+
+function isSupportTicketsList(
+  value: unknown,
+): value is { tickets: SupportTicketPublic[] } {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const body = value as { tickets?: unknown };
+  if (!Array.isArray(body.tickets)) {
+    return false;
+  }
+  return body.tickets.every((item) => isSupportTicketPublic(item));
+}
+
+export async function fetchSupportTickets(): Promise<SupportTicketPublic[]> {
+  const response = await authorizedFetch("/api/support/tickets");
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось загрузить обращения"));
+  }
+  if (!isSupportTicketsList(data)) {
+    throw new Error("Некорректный ответ обращений");
+  }
+  return data.tickets;
+}
+
+export async function createSupportTicket(input: {
+  subject: string;
+  body: string;
+}): Promise<SupportTicketPublic> {
+  const response = await authorizedFetch("/api/support/tickets", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось отправить обращение"));
+  }
+  if (!isSupportTicketPublic(data)) {
+    throw new Error("Некорректный ответ обращения");
+  }
+  return data;
+}
+

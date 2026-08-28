@@ -7,5 +7,7 @@ export type CatalogScreenProps = {
   addingProductId: string | null;
   onLogout: () => void;
   onOpenCart: () => void;
+  onOpenOrders: () => void;
+  onOpenSupport: () => void;
   onAdd: (productId: string) => void;
 };

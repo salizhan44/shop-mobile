@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { APP_THEME } from "../lib/app-theme.shared";
 import type { CatalogScreenProps } from "./catalog-screen.shared";
 
 export function CatalogScreen(props: CatalogScreenProps) {
@@ -10,10 +11,16 @@ export function CatalogScreen(props: CatalogScreenProps) {
       <Text style={styles.muted}>{props.customerName}</Text>
       <View style={styles.row}>
         <Pressable onPress={props.onLogout} style={styles.secondaryButton}>
-          <Text>Выйти</Text>
+          <Text style={styles.secondaryButtonText}>Выйти</Text>
         </Pressable>
         <Pressable onPress={props.onOpenCart} style={styles.secondaryButton}>
-          <Text>Корзина</Text>
+          <Text style={styles.secondaryButtonText}>Корзина</Text>
+        </Pressable>
+        <Pressable onPress={props.onOpenOrders} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>Мои заказы</Text>
+        </Pressable>
+        <Pressable onPress={props.onOpenSupport} style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>Поддержка</Text>
         </Pressable>
       </View>
       <ScrollView style={styles.list}>
@@ -52,35 +59,46 @@ export function CatalogScreen(props: CatalogScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, paddingTop: 64, gap: 12 },
-  title: { fontSize: 24, fontWeight: "600" },
-  muted: { color: "#52525b" },
+  container: {
+    flex: 1,
+    padding: 24,
+    paddingTop: 64,
+    gap: 12,
+    backgroundColor: APP_THEME.screenBackground,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "600",
+    color: APP_THEME.textPrimary,
+  },
+  muted: { color: APP_THEME.textMuted },
   row: { flexDirection: "row", gap: 8 },
   button: {
     marginTop: 8,
-    backgroundColor: "#18181b",
+    backgroundColor: APP_THEME.buttonBackground,
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: "center",
   },
-  buttonText: { color: "#fff" },
+  buttonText: { color: APP_THEME.buttonText },
   secondaryButton: {
     alignSelf: "flex-start",
     borderWidth: 1,
-    borderColor: "#d4d4d8",
+    borderColor: APP_THEME.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  error: { color: "#b91c1c" },
+  secondaryButtonText: { color: APP_THEME.textPrimary },
+  error: { color: APP_THEME.error },
   list: { marginTop: 8 },
   card: {
     borderWidth: 1,
-    borderColor: "#e4e4e7",
+    borderColor: APP_THEME.cardBorder,
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
-    backgroundColor: "#fff",
+    backgroundColor: APP_THEME.cardBackground,
   },
-  cardTitle: { fontWeight: "600" },
+  cardTitle: { fontWeight: "600", color: APP_THEME.textPrimary },
 });
