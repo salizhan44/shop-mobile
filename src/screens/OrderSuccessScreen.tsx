@@ -2,7 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { APP_THEME } from "../lib/app-theme.shared";
 import {
-  formatPriceRubles,
+  formatPriceSomLabel,
   orderStatusLabel,
 } from "../lib/orders-format.shared";
 import type { OrderSuccessScreenProps } from "./order-success-screen.shared";
@@ -21,14 +21,14 @@ export function OrderSuccessScreen(props: OrderSuccessScreenProps) {
           <View key={item.id} style={styles.card}>
             <Text style={styles.cardTitle}>{item.productName}</Text>
             <Text style={styles.muted}>
-              {formatPriceRubles(item.priceCents)} ₽ × {item.quantity} ={" "}
-              {formatPriceRubles(item.lineTotalCents)} ₽
+              {formatPriceSomLabel(item.priceCents)} × {item.quantity} ={" "}
+              {formatPriceSomLabel(item.lineTotalCents)}
             </Text>
           </View>
         ))}
       </ScrollView>
       <Text style={styles.total}>
-        Итого: {formatPriceRubles(props.order.totalCents)} ₽
+        Итого: {formatPriceSomLabel(props.order.totalCents)}
       </Text>
       <Text style={styles.muted}>
         Склад проверит заказ. Статус можно смотреть в «Мои заказы».

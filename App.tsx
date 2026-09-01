@@ -13,7 +13,9 @@ import {
   checkoutOrder,
   fetchCart,
   createSupportTicket,
+  fetchOrderUpdates,
   fetchSupportTickets,
+  fetchSupportTicketUpdates,
   fetchMyOrders,
   fetchProducts,
   loginCustomer,
@@ -28,9 +30,11 @@ import {
 } from "./src/lib/api";
 import type { AppScreen } from "./src/lib/app-screen.shared";
 import { APP_THEME } from "./src/lib/app-theme.shared";
+import { UPDATES_POLL_INTERVAL_MS } from "./src/lib/updates.shared";
 import { clearSession, loadCustomer, saveSession } from "./src/lib/session";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CatalogScreen } from "./src/screens/CatalogScreen";
+import { PasswordInput } from "./src/components/PasswordInput";
 import { OrderSuccessScreen } from "./src/screens/OrderSuccessScreen";
 import { OrdersScreen } from "./src/screens/OrdersScreen";
 import { SupportScreen } from "./src/screens/SupportScreen";
@@ -59,6 +63,12 @@ export default function App() {
   const [tickets, setTickets] = useState<SupportTicketPublic[]>([]);
   const [supportError, setSupportError] = useState("");
   const [supportPending, setSupportPending] = useState(false);
+  const [ordersSeenAt, setOrdersSeenAt] = useState(() => new Date().toISOString());
+  const [ordersHasUpdates, setOrdersHasUpdates] = useState(false);
+  const [ordersRefreshPending, setOrdersRefreshPending] = useState(false);
+  const [supportSeenAt, setSupportSeenAt] = useState(() => new Date().toISOString());
+  const [supportHasUpdates, setSupportHasUpdates] = useState(false);
+  const [supportRefreshPending, setSupportRefreshPending] = useState(false);
 
   useEffect(() => {
     loadCustomer()
@@ -111,8 +121,44 @@ export default function App() {
         setOrdersError(
           caught instanceof Error ? caught.message : "Не удалось загрузить заказы",
         );
+      })
+      .finally(() => {
+        void fetchOrderUpdates(null)
+          .then((check) => {
+            setOrdersSeenAt(check.latestAt ?? new Date().toISOString());
+            setOrdersHasUpdates(false);
+          })
+          .catch(() => undefined);
       });
   }, [screen]);
+
+  useEffect(() => {
+    if (screen !== "orders") {
+      return;
+    }
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const check = await fetchOrderUpdates(ordersSeenAt);
+        if (!cancelled && check.hasUpdates) {
+          setOrdersHasUpdates(true);
+        }
+      } catch {
+        // тихо игнорируем сбои опроса
+      }
+    }
+
+    const interval = setInterval(() => {
+      void poll();
+    }, UPDATES_POLL_INTERVAL_MS);
+    void poll();
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [screen, ordersSeenAt]);
 
   useEffect(() => {
     if (screen !== "support") {
@@ -128,8 +174,44 @@ export default function App() {
             ? caught.message
             : "Не удалось загрузить обращения",
         );
+      })
+      .finally(() => {
+        void fetchSupportTicketUpdates(null)
+          .then((check) => {
+            setSupportSeenAt(check.latestAt ?? new Date().toISOString());
+            setSupportHasUpdates(false);
+          })
+          .catch(() => undefined);
       });
   }, [screen]);
+
+  useEffect(() => {
+    if (screen !== "support") {
+      return;
+    }
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const check = await fetchSupportTicketUpdates(supportSeenAt);
+        if (!cancelled && check.hasUpdates) {
+          setSupportHasUpdates(true);
+        }
+      } catch {
+        // тихо игнорируем сбои опроса
+      }
+    }
+
+    const interval = setInterval(() => {
+      void poll();
+    }, UPDATES_POLL_INTERVAL_MS);
+    void poll();
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [screen, supportSeenAt]);
 
   async function onLogin() {
     setError("");
@@ -248,12 +330,51 @@ export default function App() {
     setScreen("support");
   }
 
+  async function onRefreshOrders() {
+    setOrdersRefreshPending(true);
+    setOrdersHasUpdates(false);
+    setOrdersError("");
+    try {
+      setOrders(await fetchMyOrders());
+      const check = await fetchOrderUpdates(null);
+      setOrdersSeenAt(check.latestAt ?? new Date().toISOString());
+    } catch (caught) {
+      setOrdersError(
+        caught instanceof Error ? caught.message : "Не удалось загрузить заказы",
+      );
+    } finally {
+      setOrdersRefreshPending(false);
+    }
+  }
+
+  async function onRefreshSupport() {
+    setSupportRefreshPending(true);
+    setSupportHasUpdates(false);
+    setSupportError("");
+    try {
+      setTickets(await fetchSupportTickets());
+      const check = await fetchSupportTicketUpdates(null);
+      setSupportSeenAt(check.latestAt ?? new Date().toISOString());
+    } catch (caught) {
+      setSupportError(
+        caught instanceof Error
+          ? caught.message
+          : "Не удалось загрузить обращения",
+      );
+    } finally {
+      setSupportRefreshPending(false);
+    }
+  }
+
   async function onCreateSupportTicket(subject: string, body: string) {
     setSupportPending(true);
     setSupportError("");
     try {
       await createSupportTicket({ subject, body });
       setTickets(await fetchSupportTickets());
+      const check = await fetchSupportTicketUpdates(null);
+      setSupportSeenAt(check.latestAt ?? new Date().toISOString());
+      setSupportHasUpdates(false);
     } finally {
       setSupportPending(false);
     }
@@ -304,7 +425,10 @@ export default function App() {
       <OrdersScreen
         orders={orders}
         error={ordersError}
+        hasUpdates={ordersHasUpdates}
+        refreshPending={ordersRefreshPending}
         onBack={() => setScreen("catalog")}
+        onRefresh={onRefreshOrders}
       />
     );
   }
@@ -315,7 +439,10 @@ export default function App() {
         tickets={tickets}
         error={supportError}
         submitPending={supportPending}
+        hasUpdates={supportHasUpdates}
+        refreshPending={supportRefreshPending}
         onBack={() => setScreen("catalog")}
+        onRefresh={onRefreshSupport}
         onCreate={onCreateSupportTicket}
       />
     );
@@ -353,12 +480,10 @@ export default function App() {
         onChangeText={setEmail}
         style={styles.input}
       />
-      <TextInput
-        placeholder="Пароль"
-        secureTextEntry
+      <PasswordInput
         value={password}
         onChangeText={setPassword}
-        style={styles.input}
+        placeholder="Пароль"
       />
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Pressable

@@ -6,6 +6,10 @@ import {
   getRefreshToken,
   saveSession,
 } from "./session";
+import {
+  isUpdatesCheckPublic,
+  type UpdatesCheckPublic,
+} from "./updates.shared";
 
 export type CustomerPublic = {
   id: string;
@@ -376,5 +380,32 @@ export async function createSupportTicket(input: {
     throw new Error("Некорректный ответ обращения");
   }
   return data;
+}
+
+async function readUpdatesCheck(response: Response): Promise<UpdatesCheckPublic> {
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось проверить обновления"));
+  }
+  if (!isUpdatesCheckPublic(data)) {
+    throw new Error("Некорректный ответ обновлений");
+  }
+  return data;
+}
+
+export async function fetchOrderUpdates(
+  since: string | null,
+): Promise<UpdatesCheckPublic> {
+  const query = since ? `?since=${encodeURIComponent(since)}` : "";
+  return readUpdatesCheck(await authorizedFetch(`/api/orders/updates${query}`));
+}
+
+export async function fetchSupportTicketUpdates(
+  since: string | null,
+): Promise<UpdatesCheckPublic> {
+  const query = since ? `?since=${encodeURIComponent(since)}` : "";
+  return readUpdatesCheck(
+    await authorizedFetch(`/api/support/tickets/updates${query}`),
+  );
 }
 

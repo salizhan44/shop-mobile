@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { APP_THEME } from "../lib/app-theme.shared";
+import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import type { CartScreenProps } from "./cart-screen.shared";
 
 export function CartScreen(props: CartScreenProps) {
@@ -20,8 +21,8 @@ export function CartScreen(props: CartScreenProps) {
             <View key={item.id} style={styles.card}>
               <Text style={styles.cardTitle}>{item.name}</Text>
               <Text style={styles.muted}>
-                {(item.priceCents / 100).toFixed(2)} ₽ × {item.quantity} ={" "}
-                {(item.lineTotalCents / 100).toFixed(2)} ₽
+                {formatPriceSomLabel(item.priceCents)} × {item.quantity} ={" "}
+                {formatPriceSomLabel(item.lineTotalCents)}
               </Text>
               <View style={styles.row}>
                 <Pressable
@@ -51,7 +52,7 @@ export function CartScreen(props: CartScreenProps) {
         )}
       </ScrollView>
       <Text style={styles.total}>
-        Итого: {(props.cart.totalCents / 100).toFixed(2)} ₽
+        Итого: {formatPriceSomLabel(props.cart.totalCents)}
       </Text>
       {props.cart.items.length > 0 ? (
         <Pressable

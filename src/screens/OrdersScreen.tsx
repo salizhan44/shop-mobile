@@ -1,9 +1,10 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { RefreshWithUpdates } from "../components/RefreshWithUpdates";
 import { APP_THEME } from "../lib/app-theme.shared";
 import {
   formatOrderDate,
-  formatPriceRubles,
+  formatPriceSomLabel,
   orderStatusLabel,
 } from "../lib/orders-format.shared";
 import type { OrdersScreenProps } from "./orders-screen.shared";
@@ -16,6 +17,11 @@ export function OrdersScreen(props: OrdersScreenProps) {
         <Text style={styles.link}>К каталогу</Text>
       </Pressable>
       <Text style={styles.title}>Мои заказы</Text>
+      <RefreshWithUpdates
+        hasUpdates={props.hasUpdates}
+        onRefresh={props.onRefresh}
+        pending={props.refreshPending}
+      />
       {props.error ? <Text style={styles.error}>{props.error}</Text> : null}
       <ScrollView style={styles.list}>
         {props.orders.length === 0 && !props.error ? (
@@ -36,11 +42,11 @@ export function OrdersScreen(props: OrdersScreenProps) {
               {order.items.map((item) => (
                 <Text key={item.id} style={styles.muted}>
                   {item.productName} · {item.quantity} ×{" "}
-                  {formatPriceRubles(item.priceCents)} ₽
+                  {formatPriceSomLabel(item.priceCents)}
                 </Text>
               ))}
               <Text style={styles.total}>
-                Итого: {formatPriceRubles(order.totalCents)} ₽
+                Итого: {formatPriceSomLabel(order.totalCents)}
               </Text>
             </View>
           ))

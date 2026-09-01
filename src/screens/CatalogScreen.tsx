@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { APP_THEME } from "../lib/app-theme.shared";
+import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import type { CatalogScreenProps } from "./catalog-screen.shared";
 
 export function CatalogScreen(props: CatalogScreenProps) {
@@ -37,7 +38,7 @@ export function CatalogScreen(props: CatalogScreenProps) {
                 <Text style={styles.muted}>{product.description}</Text>
               ) : null}
               <Text style={styles.muted}>
-                {(product.priceCents / 100).toFixed(2)} ₽
+                {formatPriceSomLabel(product.priceCents)}
               </Text>
               <Pressable
                 onPress={() => props.onAdd(product.id)}

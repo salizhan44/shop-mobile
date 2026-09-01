@@ -8,6 +8,7 @@ import {
   View,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { RefreshWithUpdates } from "../components/RefreshWithUpdates";
 import { APP_THEME } from "../lib/app-theme.shared";
 import {
   formatSupportTicketDate,
@@ -40,6 +41,11 @@ export function SupportScreen(props: SupportScreenProps) {
         <Text style={styles.link}>К каталогу</Text>
       </Pressable>
       <Text style={styles.title}>Поддержка</Text>
+      <RefreshWithUpdates
+        hasUpdates={props.hasUpdates}
+        onRefresh={props.onRefresh}
+        pending={props.refreshPending}
+      />
       {props.error ? <Text style={styles.error}>{props.error}</Text> : null}
       <View style={styles.form}>
         <TextInput
