@@ -1,105 +1,144 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { StatusBar } from "expo-status-bar";
+import { useMemo, useState } from "react";
+import { Dimensions, Keyboard, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ProductDetailModal } from "../components/ProductDetailModal";
+import { filterProductsBySearch } from "../lib/catalog-search.shared";
 import { APP_THEME } from "../lib/app-theme.shared";
+import type { ProductPublic } from "../lib/api";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import type { CatalogScreenProps } from "./catalog-screen.shared";
 
+const GRID_PADDING = 8;
+const GRID_GAP = 8;
+const CARD_WIDTH =
+  (Dimensions.get("window").width - GRID_PADDING * 2 - GRID_GAP) / 2;
+
 export function CatalogScreen(props: CatalogScreenProps) {
+  const [selectedProduct, setSelectedProduct] = useState<ProductPublic | null>(
+    null,
+  );
+
+  const visibleProducts = useMemo(
+    () => filterProductsBySearch(props.products, props.searchApplied),
+    [props.products, props.searchApplied],
+  );
+
+  function onAddFromModal(productId: string) {
+    props.onAdd(productId);
+  }
+
   return (
-    <View style={styles.container}>
-      <StatusBar style="dark" />
-      <Text style={styles.title}>Каталог</Text>
-      <Text style={styles.muted}>{props.customerName}</Text>
-      <View style={styles.row}>
-        <Pressable onPress={props.onLogout} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Выйти</Text>
-        </Pressable>
-        <Pressable onPress={props.onOpenCart} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Корзина</Text>
-        </Pressable>
-        <Pressable onPress={props.onOpenOrders} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Мои заказы</Text>
-        </Pressable>
-        <Pressable onPress={props.onOpenSupport} style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Поддержка</Text>
-        </Pressable>
-      </View>
-      <ScrollView style={styles.list}>
+    <>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="never"
+        keyboardDismissMode="on-drag"
+        onScrollBeginDrag={Keyboard.dismiss}
+      >
         {props.catalogError ? (
           <Text style={styles.error}>{props.catalogError}</Text>
         ) : null}
-        {props.products.length === 0 && !props.catalogError ? (
-          <Text style={styles.muted}>Товаров пока нет. Их добавят на сайте.</Text>
+        {visibleProducts.length === 0 && !props.catalogError ? (
+          <Text style={styles.muted}>
+            {props.searchApplied.trim().length > 0
+              ? "Ничего не найдено. Измените запрос или сбросьте поиск."
+              : "Товаров пока нет. Их добавят на сайте."}
+          </Text>
         ) : (
-          props.products.map((product) => (
-            <View key={product.id} style={styles.card}>
-              <Text style={styles.cardTitle}>{product.name}</Text>
-              {product.description ? (
-                <Text style={styles.muted}>{product.description}</Text>
-              ) : null}
-              <Text style={styles.muted}>
-                {formatPriceSomLabel(product.priceCents)}
-              </Text>
+          <View style={styles.grid}>
+            {visibleProducts.map((product) => (
               <Pressable
-                onPress={() => props.onAdd(product.id)}
-                disabled={props.addingProductId === product.id}
-                style={styles.button}
+                key={product.id}
+                onPress={() => setSelectedProduct(product)}
+                style={({ pressed }) => [
+                  styles.card,
+                  pressed ? styles.cardPressed : null,
+                ]}
               >
-                <Text style={styles.buttonText}>
-                  {props.addingProductId === product.id
-                    ? "Добавляем…"
-                    : "В корзину"}
+                <View style={styles.imagePlaceholder}>
+                  <Text style={styles.imagePlaceholderText}>▦</Text>
+                </View>
+                <Text style={styles.cardTitle} numberOfLines={2}>
+                  {product.name}
+                </Text>
+                <Text style={styles.price}>
+                  {formatPriceSomLabel(product.priceCents)}
                 </Text>
               </Pressable>
-            </View>
-          ))
+            ))}
+          </View>
         )}
       </ScrollView>
-    </View>
+      <ProductDetailModal
+        product={selectedProduct}
+        adding={
+          selectedProduct !== null &&
+          props.addingProductId === selectedProduct.id
+        }
+        onClose={() => setSelectedProduct(null)}
+        onAdd={onAddFromModal}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scroll: {
     flex: 1,
-    padding: 24,
-    paddingTop: 64,
-    gap: 12,
-    backgroundColor: APP_THEME.screenBackground,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    color: APP_THEME.textPrimary,
+  content: {
+    padding: GRID_PADDING,
+    paddingBottom: 24,
   },
-  muted: { color: APP_THEME.textMuted },
-  row: { flexDirection: "row", gap: 8 },
-  button: {
-    marginTop: 8,
-    backgroundColor: APP_THEME.buttonBackground,
-    borderRadius: 8,
-    paddingVertical: 10,
-    alignItems: "center",
+  muted: {
+    color: APP_THEME.textMuted,
+    paddingHorizontal: 4,
   },
-  buttonText: { color: APP_THEME.buttonText },
-  secondaryButton: {
-    alignSelf: "flex-start",
-    borderWidth: 1,
-    borderColor: APP_THEME.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  error: {
+    color: APP_THEME.error,
+    paddingHorizontal: 4,
+    marginBottom: 8,
   },
-  secondaryButtonText: { color: APP_THEME.textPrimary },
-  error: { color: APP_THEME.error },
-  list: { marginTop: 8 },
+  grid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: GRID_GAP,
+  },
   card: {
+    width: CARD_WIDTH,
+    borderRadius: 12,
+    padding: 8,
+    backgroundColor: APP_THEME.cardBackground,
     borderWidth: 1,
     borderColor: APP_THEME.cardBorder,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: APP_THEME.cardBackground,
+    gap: 4,
   },
-  cardTitle: { fontWeight: "600", color: APP_THEME.textPrimary },
+  cardPressed: {
+    opacity: 0.92,
+  },
+  imagePlaceholder: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: 8,
+    backgroundColor: APP_THEME.screenBackground,
+    borderWidth: 1,
+    borderColor: APP_THEME.border,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imagePlaceholderText: {
+    fontSize: 32,
+    color: APP_THEME.textMuted,
+  },
+  cardTitle: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: APP_THEME.textPrimary,
+    lineHeight: 16,
+  },
+  price: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: APP_THEME.accent,
+  },
 });

@@ -5,6 +5,5 @@ export type OrdersScreenProps = {
   error: string;
   hasUpdates: boolean;
   refreshPending: boolean;
-  onBack: () => void;
   onRefresh: () => void;
 };

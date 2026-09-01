@@ -1,69 +1,91 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { StatusBar } from "expo-status-bar";
 import { APP_THEME } from "../lib/app-theme.shared";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import type { CartScreenProps } from "./cart-screen.shared";
 
 export function CartScreen(props: CartScreenProps) {
+  const itemCount = props.cart.items.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
-      <Pressable onPress={props.onBack}>
-        <Text style={styles.link}>К каталогу</Text>
-      </Pressable>
-      <Text style={styles.title}>Корзина</Text>
       {props.error ? <Text style={styles.error}>{props.error}</Text> : null}
-      <ScrollView style={styles.list}>
+      <ScrollView
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="never"
+        keyboardDismissMode="on-drag"
+      >
         {props.cart.items.length === 0 ? (
-          <Text style={styles.muted}>Корзина пустая.</Text>
+          <View style={styles.empty}>
+            <Text style={styles.emptyIcon}>◫</Text>
+            <Text style={styles.muted}>Корзина пустая</Text>
+            <Text style={styles.mutedSmall}>Добавьте товары из каталога</Text>
+          </View>
         ) : (
           props.cart.items.map((item) => (
             <View key={item.id} style={styles.card}>
-              <Text style={styles.cardTitle}>{item.name}</Text>
-              <Text style={styles.muted}>
-                {formatPriceSomLabel(item.priceCents)} × {item.quantity} ={" "}
-                {formatPriceSomLabel(item.lineTotalCents)}
-              </Text>
+              <View style={styles.cardTop}>
+                <View style={styles.placeholder}>
+                  <Text style={styles.placeholderText}>▦</Text>
+                </View>
+                <View style={styles.info}>
+                  <Text style={styles.cardTitle}>{item.name}</Text>
+                  <Text style={styles.price}>
+                    {formatPriceSomLabel(item.priceCents)}
+                  </Text>
+                  <Text style={styles.lineTotal}>
+                    {formatPriceSomLabel(item.lineTotalCents)}
+                  </Text>
+                </View>
+              </View>
               <View style={styles.row}>
                 <Pressable
                   onPress={() => props.onDecrease(item.id, item.quantity)}
                   disabled={props.busyItemId === item.id}
-                  style={styles.secondaryButton}
+                  style={styles.qtyButton}
                 >
-                  <Text style={styles.secondaryButtonText}>−</Text>
+                  <Text style={styles.qtyButtonText}>−</Text>
                 </Pressable>
+                <Text style={styles.qtyValue}>{item.quantity}</Text>
                 <Pressable
                   onPress={() => props.onIncrease(item.id, item.quantity)}
                   disabled={props.busyItemId === item.id}
-                  style={styles.secondaryButton}
+                  style={styles.qtyButton}
                 >
-                  <Text style={styles.secondaryButtonText}>+</Text>
+                  <Text style={styles.qtyButtonText}>+</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => props.onRemove(item.id)}
                   disabled={props.busyItemId === item.id}
-                  style={styles.secondaryButton}
+                  style={styles.removeButton}
                 >
-                  <Text style={styles.secondaryButtonText}>Убрать</Text>
+                  <Text style={styles.removeButtonText}>Убрать</Text>
                 </Pressable>
               </View>
             </View>
           ))
         )}
       </ScrollView>
-      <Text style={styles.total}>
-        Итого: {formatPriceSomLabel(props.cart.totalCents)}
-      </Text>
       {props.cart.items.length > 0 ? (
-        <Pressable
-          onPress={props.onCheckout}
-          disabled={props.checkoutPending || props.busyItemId !== null}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>
-            {props.checkoutPending ? "Оформляем…" : "Оформить заказ"}
-          </Text>
-        </Pressable>
+        <View style={styles.footer}>
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>
+              Итого ({itemCount} шт.)
+            </Text>
+            <Text style={styles.totalValue}>
+              {formatPriceSomLabel(props.cart.totalCents)}
+            </Text>
+          </View>
+          <Pressable
+            onPress={props.onCheckout}
+            disabled={props.checkoutPending || props.busyItemId !== null}
+            style={styles.checkoutButton}
+          >
+            <Text style={styles.checkoutButtonText}>
+              {props.checkoutPending ? "Оформляем…" : "Оформить заказ"}
+            </Text>
+          </Pressable>
+        </View>
       ) : null}
     </View>
   );
@@ -72,44 +94,150 @@ export function CartScreen(props: CartScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    paddingTop: 64,
-    gap: 12,
-    backgroundColor: APP_THEME.screenBackground,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
+  error: {
+    color: APP_THEME.error,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    padding: 12,
+    paddingBottom: 24,
+    gap: 10,
+  },
+  empty: {
+    alignItems: "center",
+    paddingVertical: 48,
+    gap: 8,
+  },
+  emptyIcon: {
+    fontSize: 40,
+    color: APP_THEME.textMuted,
+  },
+  muted: {
     color: APP_THEME.textPrimary,
+    fontSize: 16,
+    fontWeight: "600",
   },
-  muted: { color: APP_THEME.textMuted },
-  link: { color: APP_THEME.link },
-  error: { color: APP_THEME.error },
-  list: { marginTop: 8 },
-  row: { flexDirection: "row", gap: 8, marginTop: 8 },
+  mutedSmall: {
+    color: APP_THEME.textMuted,
+    fontSize: 14,
+  },
   card: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: APP_THEME.cardBackground,
     borderWidth: 1,
     borderColor: APP_THEME.cardBorder,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: APP_THEME.cardBackground,
+    gap: 10,
   },
-  cardTitle: { fontWeight: "600", color: APP_THEME.textPrimary },
-  secondaryButton: {
+  cardTop: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  placeholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    backgroundColor: APP_THEME.screenBackground,
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: APP_THEME.border,
+  },
+  placeholderText: {
+    fontSize: 24,
+    color: APP_THEME.textMuted,
+  },
+  info: {
+    flex: 1,
+    gap: 2,
+  },
+  cardTitle: {
+    fontWeight: "700",
+    color: APP_THEME.textPrimary,
+  },
+  price: {
+    color: APP_THEME.textMuted,
+    fontSize: 13,
+  },
+  lineTotal: {
+    color: APP_THEME.accent,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  qtyButton: {
+    width: 36,
+    height: 36,
     borderRadius: 8,
+    borderWidth: 1,
+    borderColor: APP_THEME.border,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: APP_THEME.screenBackground,
+  },
+  qtyButtonText: {
+    fontSize: 18,
+    color: APP_THEME.textPrimary,
+    fontWeight: "600",
+  },
+  qtyValue: {
+    minWidth: 24,
+    textAlign: "center",
+    fontWeight: "700",
+    color: APP_THEME.textPrimary,
+  },
+  removeButton: {
+    marginLeft: "auto",
     paddingHorizontal: 12,
     paddingVertical: 8,
-  },
-  secondaryButtonText: { color: APP_THEME.textPrimary },
-  button: {
-    backgroundColor: APP_THEME.buttonBackground,
     borderRadius: 8,
-    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: APP_THEME.border,
+  },
+  removeButtonText: {
+    color: APP_THEME.textMuted,
+    fontSize: 13,
+  },
+  footer: {
+    padding: 12,
+    paddingBottom: 8,
+    backgroundColor: APP_THEME.cardBackground,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: APP_THEME.border,
+    gap: 10,
+  },
+  totalRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
   },
-  buttonText: { color: APP_THEME.buttonText },
-  total: { fontWeight: "600", fontSize: 16, color: APP_THEME.textPrimary },
+  totalLabel: {
+    color: APP_THEME.textMuted,
+    fontSize: 14,
+  },
+  totalValue: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: APP_THEME.accent,
+  },
+  checkoutButton: {
+    backgroundColor: APP_THEME.buttonBackground,
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  checkoutButtonText: {
+    color: APP_THEME.buttonText,
+    fontSize: 16,
+    fontWeight: "700",
+  },
 });

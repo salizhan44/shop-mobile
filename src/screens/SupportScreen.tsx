@@ -7,7 +7,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { StatusBar } from "expo-status-bar";
 import { RefreshWithUpdates } from "../components/RefreshWithUpdates";
 import { APP_THEME } from "../lib/app-theme.shared";
 import {
@@ -36,43 +35,50 @@ export function SupportScreen(props: SupportScreenProps) {
 
   return (
     <View style={styles.container}>
-      <StatusBar style="dark" />
-      <Pressable onPress={props.onBack}>
-        <Text style={styles.link}>К каталогу</Text>
-      </Pressable>
-      <Text style={styles.title}>Поддержка</Text>
-      <RefreshWithUpdates
-        hasUpdates={props.hasUpdates}
-        onRefresh={props.onRefresh}
-        pending={props.refreshPending}
-      />
-      {props.error ? <Text style={styles.error}>{props.error}</Text> : null}
-      <View style={styles.form}>
-        <TextInput
-          placeholder="Тема"
-          value={subject}
-          onChangeText={setSubject}
-          style={styles.input}
+      <View style={styles.toolbar}>
+        <RefreshWithUpdates
+          hasUpdates={props.hasUpdates}
+          onRefresh={props.onRefresh}
+          pending={props.refreshPending}
         />
-        <TextInput
-          placeholder="Опишите проблему или вопрос"
-          value={body}
-          onChangeText={setBody}
-          multiline
-          style={[styles.input, styles.textarea]}
-        />
-        {formError ? <Text style={styles.error}>{formError}</Text> : null}
-        <Pressable
-          onPress={onSubmit}
-          disabled={props.submitPending}
-          style={styles.button}
-        >
-          <Text style={styles.buttonText}>
-            {props.submitPending ? "Отправляем…" : "Отправить"}
-          </Text>
-        </Pressable>
       </View>
-      <ScrollView style={styles.list}>
+      {props.error ? <Text style={styles.error}>{props.error}</Text> : null}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="never"
+        keyboardDismissMode="on-drag"
+      >
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>Новое обращение</Text>
+          <TextInput
+            placeholder="Тема"
+            value={subject}
+            onChangeText={setSubject}
+            style={styles.input}
+            placeholderTextColor={APP_THEME.textMuted}
+          />
+          <TextInput
+            placeholder="Опишите проблему или вопрос"
+            value={body}
+            onChangeText={setBody}
+            multiline
+            style={[styles.input, styles.textarea]}
+            placeholderTextColor={APP_THEME.textMuted}
+          />
+          {formError ? <Text style={styles.error}>{formError}</Text> : null}
+          <Pressable
+            onPress={onSubmit}
+            disabled={props.submitPending}
+            style={styles.button}
+          >
+            <Text style={styles.buttonText}>
+              {props.submitPending ? "Отправляем…" : "Отправить"}
+            </Text>
+          </Pressable>
+        </View>
+
+        <Text style={styles.sectionTitle}>История</Text>
         {props.tickets.length === 0 && !props.error ? (
           <Text style={styles.muted}>Обращений пока нет.</Text>
         ) : (
@@ -98,48 +104,83 @@ export function SupportScreen(props: SupportScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 24,
-    paddingTop: 64,
-    gap: 12,
-    backgroundColor: APP_THEME.screenBackground,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
+  toolbar: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  scroll: {
+    flex: 1,
+  },
+  content: {
+    padding: 12,
+    paddingBottom: 24,
+    gap: 10,
+  },
+  formCard: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: APP_THEME.cardBackground,
+    borderWidth: 1,
+    borderColor: APP_THEME.cardBorder,
+    gap: 8,
+  },
+  formTitle: {
+    fontWeight: "700",
     color: APP_THEME.textPrimary,
   },
-  muted: { color: APP_THEME.textMuted },
-  link: { color: APP_THEME.link },
-  error: { color: APP_THEME.error },
-  form: { gap: 8 },
+  sectionTitle: {
+    marginTop: 4,
+    fontWeight: "700",
+    color: APP_THEME.textPrimary,
+  },
+  muted: {
+    color: APP_THEME.textMuted,
+  },
+  error: {
+    color: APP_THEME.error,
+    paddingHorizontal: 4,
+  },
   input: {
     borderWidth: 1,
     borderColor: APP_THEME.border,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    backgroundColor: APP_THEME.cardBackground,
+    backgroundColor: APP_THEME.screenBackground,
     color: APP_THEME.textPrimary,
   },
-  textarea: { minHeight: 100, textAlignVertical: "top" },
+  textarea: {
+    minHeight: 100,
+    textAlignVertical: "top",
+  },
   button: {
     backgroundColor: APP_THEME.buttonBackground,
     borderRadius: 8,
     paddingVertical: 12,
     alignItems: "center",
   },
-  buttonText: { color: APP_THEME.buttonText },
-  list: { marginTop: 8 },
+  buttonText: {
+    color: APP_THEME.buttonText,
+    fontWeight: "600",
+  },
   card: {
+    borderRadius: 12,
+    padding: 12,
+    backgroundColor: APP_THEME.cardBackground,
     borderWidth: 1,
     borderColor: APP_THEME.cardBorder,
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    backgroundColor: APP_THEME.cardBackground,
     gap: 4,
   },
-  cardTitle: { fontWeight: "600", color: APP_THEME.textPrimary },
-  body: { color: APP_THEME.textPrimary },
-  reply: { color: APP_THEME.textMuted },
+  cardTitle: {
+    fontWeight: "700",
+    color: APP_THEME.textPrimary,
+  },
+  body: {
+    color: APP_THEME.textPrimary,
+  },
+  reply: {
+    color: APP_THEME.textMuted,
+  },
 });

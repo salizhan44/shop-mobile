@@ -2,12 +2,14 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   addProductToCart,
   checkoutOrder,
@@ -30,19 +32,32 @@ import {
 } from "./src/lib/api";
 import type { AppScreen } from "./src/lib/app-screen.shared";
 import { APP_THEME } from "./src/lib/app-theme.shared";
+import type { MainTab } from "./src/lib/main-tab.shared";
+import { getMainTabTitle } from "./src/components/AppShell";
+import { normalizeSearchQuery } from "./src/lib/catalog-search.shared";
 import { UPDATES_POLL_INTERVAL_MS } from "./src/lib/updates.shared";
 import { clearSession, loadCustomer, saveSession } from "./src/lib/session";
+import { AppHeader } from "./src/components/AppHeader";
+import { AppShell } from "./src/components/AppShell";
+import { PasswordInput } from "./src/components/PasswordInput";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CatalogScreen } from "./src/screens/CatalogScreen";
-import { PasswordInput } from "./src/components/PasswordInput";
 import { OrderSuccessScreen } from "./src/screens/OrderSuccessScreen";
 import { OrdersScreen } from "./src/screens/OrdersScreen";
 import { SupportScreen } from "./src/screens/SupportScreen";
 
 const emptyCart: CartPublic = { items: [], totalCents: 0 };
 
-export default function App() {
+function cartItemCount(cart: CartPublic): number {
+  return cart.items.reduce((sum, item) => sum + item.quantity, 0);
+}
+
+function AppContent() {
+  const insets = useSafeAreaInsets();
   const [screen, setScreen] = useState<AppScreen>("login");
+  const [mainTab, setMainTab] = useState<MainTab>("catalog");
+  const [supportOpen, setSupportOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [booting, setBooting] = useState(true);
   const [customer, setCustomer] = useState<CustomerPublic | null>(null);
   const [name, setName] = useState("");
@@ -69,20 +84,33 @@ export default function App() {
   const [supportSeenAt, setSupportSeenAt] = useState(() => new Date().toISOString());
   const [supportHasUpdates, setSupportHasUpdates] = useState(false);
   const [supportRefreshPending, setSupportRefreshPending] = useState(false);
+  const [catalogSearchDraft, setCatalogSearchDraft] = useState("");
+  const [catalogSearchApplied, setCatalogSearchApplied] = useState("");
+
+  const isLoggedIn = customer !== null;
 
   useEffect(() => {
     loadCustomer()
       .then((saved) => {
         if (saved) {
           setCustomer(saved);
-          setScreen("catalog");
+          setMainTab("catalog");
         }
       })
       .finally(() => setBooting(false));
   }, []);
 
   useEffect(() => {
-    if (screen !== "catalog") {
+    if (!isLoggedIn) {
+      return;
+    }
+    fetchCart()
+      .then(setCart)
+      .catch(() => setCart(emptyCart));
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn || mainTab !== "catalog" || supportOpen) {
       return;
     }
     setCatalogError("");
@@ -94,10 +122,10 @@ export default function App() {
           caught instanceof Error ? caught.message : "Не удалось загрузить каталог",
         );
       });
-  }, [screen]);
+  }, [isLoggedIn, mainTab, supportOpen]);
 
   useEffect(() => {
-    if (screen !== "cart") {
+    if (!isLoggedIn || mainTab !== "cart" || supportOpen) {
       return;
     }
     setCartError("");
@@ -107,10 +135,10 @@ export default function App() {
         setCart(emptyCart);
         setCartError(caught instanceof Error ? caught.message : "Ошибка корзины");
       });
-  }, [screen]);
+  }, [isLoggedIn, mainTab, supportOpen]);
 
   useEffect(() => {
-    if (screen !== "orders") {
+    if (!isLoggedIn || mainTab !== "orders" || supportOpen) {
       return;
     }
     setOrdersError("");
@@ -130,10 +158,10 @@ export default function App() {
           })
           .catch(() => undefined);
       });
-  }, [screen]);
+  }, [isLoggedIn, mainTab, supportOpen]);
 
   useEffect(() => {
-    if (screen !== "orders") {
+    if (!isLoggedIn || mainTab !== "orders" || supportOpen) {
       return;
     }
     let cancelled = false;
@@ -158,10 +186,10 @@ export default function App() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [screen, ordersSeenAt]);
+  }, [isLoggedIn, mainTab, supportOpen, ordersSeenAt]);
 
   useEffect(() => {
-    if (screen !== "support") {
+    if (!isLoggedIn || !supportOpen) {
       return;
     }
     setSupportError("");
@@ -183,10 +211,10 @@ export default function App() {
           })
           .catch(() => undefined);
       });
-  }, [screen]);
+  }, [isLoggedIn, supportOpen]);
 
   useEffect(() => {
-    if (screen !== "support") {
+    if (!isLoggedIn || !supportOpen) {
       return;
     }
     let cancelled = false;
@@ -211,7 +239,7 @@ export default function App() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [screen, supportSeenAt]);
+  }, [isLoggedIn, supportOpen, supportSeenAt]);
 
   async function onLogin() {
     setError("");
@@ -221,7 +249,9 @@ export default function App() {
       await saveSession(auth);
       setCustomer(auth.customer);
       setPassword("");
-      setScreen("catalog");
+      setMainTab("catalog");
+      setSupportOpen(false);
+      setAccountMenuOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Ошибка входа");
     } finally {
@@ -237,7 +267,9 @@ export default function App() {
       await saveSession(auth);
       setCustomer(auth.customer);
       setPassword("");
-      setScreen("catalog");
+      setMainTab("catalog");
+      setSupportOpen(false);
+      setAccountMenuOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Ошибка регистрации");
     } finally {
@@ -245,10 +277,22 @@ export default function App() {
     }
   }
 
+  function onApplyCatalogSearch() {
+    setCatalogSearchApplied(normalizeSearchQuery(catalogSearchDraft));
+  }
+
+  function onClearCatalogSearch() {
+    setCatalogSearchDraft("");
+    setCatalogSearchApplied("");
+  }
+
   async function onLogout() {
     await clearSession();
     setCustomer(null);
     setCart(emptyCart);
+    setSupportOpen(false);
+    setAccountMenuOpen(false);
+    onClearCatalogSearch();
     setScreen("login");
   }
 
@@ -319,15 +363,14 @@ export default function App() {
 
   function onBackToCatalog() {
     setLastOrder(null);
-    setScreen("catalog");
+    setScreen("login");
+    setMainTab("catalog");
   }
 
-  function onOpenOrders() {
-    setScreen("orders");
-  }
-
-  function onOpenSupport() {
-    setScreen("support");
+  function onOpenOrdersFromSuccess() {
+    setLastOrder(null);
+    setScreen("login");
+    setMainTab("orders");
   }
 
   async function onRefreshOrders() {
@@ -383,85 +426,116 @@ export default function App() {
   if (booting) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator />
+        <ActivityIndicator color={APP_THEME.accent} />
       </View>
     );
   }
 
-  if (screen === "catalog") {
-    return (
-      <CatalogScreen
-        customerName={customer?.name ?? ""}
-        products={products}
-        catalogError={catalogError}
-        addingProductId={addingProductId}
-        onLogout={onLogout}
-        onOpenCart={() => setScreen("cart")}
-        onOpenOrders={onOpenOrders}
-        onOpenSupport={onOpenSupport}
-        onAdd={onAdd}
-      />
-    );
-  }
-
-  if (screen === "cart") {
-    return (
-      <CartScreen
-        cart={cart}
-        error={cartError}
-        busyItemId={busyItemId}
-        checkoutPending={checkoutPending}
-        onBack={() => setScreen("catalog")}
-        onCheckout={onCheckout}
-        onIncrease={onIncrease}
-        onDecrease={onDecrease}
-        onRemove={onRemove}
-      />
-    );
-  }
-
-  if (screen === "orders") {
-    return (
-      <OrdersScreen
-        orders={orders}
-        error={ordersError}
-        hasUpdates={ordersHasUpdates}
-        refreshPending={ordersRefreshPending}
-        onBack={() => setScreen("catalog")}
-        onRefresh={onRefreshOrders}
-      />
-    );
-  }
-
-  if (screen === "support") {
-    return (
-      <SupportScreen
-        tickets={tickets}
-        error={supportError}
-        submitPending={supportPending}
-        hasUpdates={supportHasUpdates}
-        refreshPending={supportRefreshPending}
-        onBack={() => setScreen("catalog")}
-        onRefresh={onRefreshSupport}
-        onCreate={onCreateSupportTicket}
-      />
-    );
-  }
-
-  if (screen === "orderSuccess" && lastOrder) {
+  if (isLoggedIn && screen === "orderSuccess" && lastOrder) {
     return (
       <OrderSuccessScreen
         order={lastOrder}
         onBackToCatalog={onBackToCatalog}
-        onOpenOrders={onOpenOrders}
+        onOpenOrders={onOpenOrdersFromSuccess}
       />
     );
   }
 
+  if (isLoggedIn && supportOpen) {
+    return (
+      <View style={styles.root}>
+        <StatusBar style="dark" />
+        <AppHeader
+          title="Поддержка"
+          onBack={() => setSupportOpen(false)}
+        />
+        <View style={styles.supportBody}>
+          <SupportScreen
+              tickets={tickets}
+              error={supportError}
+              submitPending={supportPending}
+              hasUpdates={supportHasUpdates}
+              refreshPending={supportRefreshPending}
+              onRefresh={onRefreshSupport}
+              onCreate={onCreateSupportTicket}
+            />
+        </View>
+      </View>
+    );
+  }
+
+  if (isLoggedIn) {
+    return (
+      <AppShell
+        activeTab={mainTab}
+        title={getMainTabTitle(mainTab)}
+        customerName={customer?.name ?? ""}
+        cartItemCount={cartItemCount(cart)}
+        ordersHasUpdates={ordersHasUpdates}
+        accountMenuOpen={accountMenuOpen}
+        catalogSearch={{
+          value: catalogSearchDraft,
+          showClear:
+            catalogSearchDraft.length > 0 || catalogSearchApplied.length > 0,
+          onChangeText: setCatalogSearchDraft,
+          onSubmit: onApplyCatalogSearch,
+          onClear: onClearCatalogSearch,
+        }}
+        onTabChange={(tab) => {
+          Keyboard.dismiss();
+          setMainTab(tab);
+        }}
+        onOpenAccountMenu={() => {
+          Keyboard.dismiss();
+          setAccountMenuOpen(true);
+        }}
+        onCloseAccountMenu={() => setAccountMenuOpen(false)}
+        onOpenSupport={() => setSupportOpen(true)}
+        onLogout={onLogout}
+      >
+        {mainTab === "catalog" ? (
+          <CatalogScreen
+            products={products}
+            catalogError={catalogError}
+            addingProductId={addingProductId}
+            searchApplied={catalogSearchApplied}
+            onAdd={onAdd}
+          />
+        ) : null}
+        {mainTab === "cart" ? (
+          <CartScreen
+            cart={cart}
+            error={cartError}
+            busyItemId={busyItemId}
+            checkoutPending={checkoutPending}
+            onCheckout={onCheckout}
+            onIncrease={onIncrease}
+            onDecrease={onDecrease}
+            onRemove={onRemove}
+          />
+        ) : null}
+        {mainTab === "orders" ? (
+          <OrdersScreen
+            orders={orders}
+            error={ordersError}
+            hasUpdates={ordersHasUpdates}
+            refreshPending={ordersRefreshPending}
+            onRefresh={onRefreshOrders}
+          />
+        ) : null}
+      </AppShell>
+    );
+  }
+
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.authContainer,
+        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+      ]}
+    >
       <StatusBar style="dark" />
-      <Text style={styles.title}>
+      <Text style={styles.authTitle}>
         {screen === "login" ? "Вход" : "Регистрация"}
       </Text>
       {screen === "register" ? (
@@ -470,6 +544,7 @@ export default function App() {
           value={name}
           onChangeText={setName}
           style={styles.input}
+          placeholderTextColor={APP_THEME.textMuted}
         />
       ) : null}
       <TextInput
@@ -479,6 +554,7 @@ export default function App() {
         value={email}
         onChangeText={setEmail}
         style={styles.input}
+        placeholderTextColor={APP_THEME.textMuted}
       />
       <PasswordInput
         value={password}
@@ -511,6 +587,14 @@ export default function App() {
   );
 }
 
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <AppContent />
+    </SafeAreaProvider>
+  );
+}
+
 const styles = StyleSheet.create({
   center: {
     flex: 1,
@@ -518,16 +602,22 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: APP_THEME.screenBackground,
   },
-  container: {
+  root: {
+    flex: 1,
+    backgroundColor: APP_THEME.screenBackground,
+  },
+  supportBody: {
+    flex: 1,
+  },
+  authContainer: {
     flex: 1,
     padding: 24,
-    paddingTop: 64,
     gap: 12,
     backgroundColor: APP_THEME.screenBackground,
   },
-  title: {
+  authTitle: {
     fontSize: 24,
-    fontWeight: "600",
+    fontWeight: "700",
     color: APP_THEME.textPrimary,
   },
   input: {
@@ -545,7 +635,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
   },
-  buttonText: { color: APP_THEME.buttonText },
-  link: { color: APP_THEME.link },
-  error: { color: APP_THEME.error },
+  buttonText: {
+    color: APP_THEME.buttonText,
+    fontWeight: "600",
+  },
+  link: {
+    color: APP_THEME.link,
+  },
+  error: {
+    color: APP_THEME.error,
+  },
 });

@@ -5,7 +5,6 @@ export type CartScreenProps = {
   error: string;
   busyItemId: string | null;
   checkoutPending: boolean;
-  onBack: () => void;
   onCheckout: () => void;
   onIncrease: (itemId: string, quantity: number) => void;
   onDecrease: (itemId: string, quantity: number) => void;
