@@ -21,6 +21,15 @@ export function OrderSuccessScreen(props: OrderSuccessScreenProps) {
         <Text style={styles.muted}>
           Статус: {orderStatusLabel(props.order.status)}
         </Text>
+        {props.order.phone ? (
+          <Text style={styles.muted}>Тел: {props.order.phone}</Text>
+        ) : null}
+        {props.order.address ? (
+          <Text style={styles.muted}>Адрес: {props.order.address}</Text>
+        ) : null}
+        {props.order.comment ? (
+          <Text style={styles.muted}>Комментарий: {props.order.comment}</Text>
+        ) : null}
       </View>
       <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
         {props.order.items.map((item) => (

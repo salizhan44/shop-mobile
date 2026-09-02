@@ -77,13 +77,11 @@ export function CartScreen(props: CartScreenProps) {
             </Text>
           </View>
           <Pressable
-            onPress={props.onCheckout}
-            disabled={props.checkoutPending || props.busyItemId !== null}
+            onPress={props.onOpenCheckout}
+            disabled={props.busyItemId !== null}
             style={styles.checkoutButton}
           >
-            <Text style={styles.checkoutButtonText}>
-              {props.checkoutPending ? "Оформляем…" : "Оформить заказ"}
-            </Text>
+            <Text style={styles.checkoutButtonText}>Оформить заказ</Text>
           </Pressable>
         </View>
       ) : null}

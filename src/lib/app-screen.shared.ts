@@ -1,1 +1,1 @@
-export type AppScreen = "login" | "register" | "orderSuccess";
+export type AppScreen = "login" | "register" | "checkout" | "orderSuccess";

@@ -17,4 +17,5 @@ export const APP_THEME = {
   tabActive: "#e02e24",
   overlay: "rgba(0, 0, 0, 0.35)",
   searchBackground: "#ededed",
+  iconSoft: "#a1a1aa",
 } as const;

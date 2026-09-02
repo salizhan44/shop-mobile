@@ -42,6 +42,7 @@ import { AppShell } from "./src/components/AppShell";
 import { PasswordInput } from "./src/components/PasswordInput";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CatalogScreen } from "./src/screens/CatalogScreen";
+import { CheckoutScreen } from "./src/screens/CheckoutScreen";
 import { OrderSuccessScreen } from "./src/screens/OrderSuccessScreen";
 import { OrdersScreen } from "./src/screens/OrdersScreen";
 import { SupportScreen } from "./src/screens/SupportScreen";
@@ -344,11 +345,24 @@ function AppContent() {
     }
   }
 
-  async function onCheckout() {
+  async function onOpenCheckout() {
+    setCartError("");
+    if (cart.items.length === 0) {
+      setCartError("Корзина пустая");
+      return;
+    }
+    setScreen("checkout");
+  }
+
+  async function onSubmitCheckout(input: {
+    phone: string;
+    address: string;
+    comment: string;
+  }) {
     setCheckoutPending(true);
     setCartError("");
     try {
-      const order = await checkoutOrder();
+      const order = await checkoutOrder(input);
       setLastOrder(order);
       setCart(emptyCart);
       setScreen("orderSuccess");
@@ -356,6 +370,7 @@ function AppContent() {
       setCartError(
         caught instanceof Error ? caught.message : "Не удалось оформить заказ",
       );
+      throw caught;
     } finally {
       setCheckoutPending(false);
     }
@@ -431,6 +446,22 @@ function AppContent() {
     );
   }
 
+  if (isLoggedIn && screen === "checkout") {
+    return (
+      <CheckoutScreen
+        cart={cart}
+        error={cartError}
+        pending={checkoutPending}
+        onBack={() => {
+          setCartError("");
+          setScreen("login");
+          setMainTab("cart");
+        }}
+        onSubmit={onSubmitCheckout}
+      />
+    );
+  }
+
   if (isLoggedIn && screen === "orderSuccess" && lastOrder) {
     return (
       <OrderSuccessScreen
@@ -492,6 +523,11 @@ function AppContent() {
         onCloseAccountMenu={() => setAccountMenuOpen(false)}
         onOpenSupport={() => setSupportOpen(true)}
         onLogout={onLogout}
+        ordersRefresh={{
+          hasUpdates: ordersHasUpdates,
+          pending: ordersRefreshPending,
+          onRefresh: onRefreshOrders,
+        }}
       >
         {mainTab === "catalog" ? (
           <CatalogScreen
@@ -507,21 +543,14 @@ function AppContent() {
             cart={cart}
             error={cartError}
             busyItemId={busyItemId}
-            checkoutPending={checkoutPending}
-            onCheckout={onCheckout}
+            onOpenCheckout={onOpenCheckout}
             onIncrease={onIncrease}
             onDecrease={onDecrease}
             onRemove={onRemove}
           />
         ) : null}
         {mainTab === "orders" ? (
-          <OrdersScreen
-            orders={orders}
-            error={ordersError}
-            hasUpdates={ordersHasUpdates}
-            refreshPending={ordersRefreshPending}
-            onRefresh={onRefreshOrders}
-          />
+          <OrdersScreen orders={orders} error={ordersError} />
         ) : null}
       </AppShell>
     );

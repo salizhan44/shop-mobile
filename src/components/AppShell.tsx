@@ -16,6 +16,9 @@ export function AppShell(props: AppShellProps) {
       <AppHeader
         title={showSearch ? undefined : props.title}
         searchBar={showSearch ? props.catalogSearch : undefined}
+        refresh={
+          props.activeTab === "orders" ? props.ordersRefresh : undefined
+        }
         onOpenMenu={props.onOpenAccountMenu}
       />
       <View style={styles.content}>{props.children}</View>

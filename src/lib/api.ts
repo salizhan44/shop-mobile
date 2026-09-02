@@ -247,6 +247,9 @@ export type OrderPublic = {
   id: string;
   status: "PENDING" | "CONFIRMED" | "REJECTED";
   totalCents: number;
+  phone: string;
+  address: string;
+  comment: string | null;
   rejectionReason: string | null;
   items: OrderLinePublic[];
   createdAt: string;
@@ -260,6 +263,8 @@ function isOrderPublic(value: unknown): value is OrderPublic {
     id?: unknown;
     status?: unknown;
     totalCents?: unknown;
+    phone?: unknown;
+    address?: unknown;
     items?: unknown;
     createdAt?: unknown;
   };
@@ -267,14 +272,21 @@ function isOrderPublic(value: unknown): value is OrderPublic {
     typeof body.id === "string" &&
     typeof body.status === "string" &&
     typeof body.totalCents === "number" &&
+    typeof body.phone === "string" &&
+    typeof body.address === "string" &&
     Array.isArray(body.items) &&
     typeof body.createdAt === "string"
   );
 }
 
-export async function checkoutOrder(): Promise<OrderPublic> {
+export async function checkoutOrder(input: {
+  phone: string;
+  address: string;
+  comment: string;
+}): Promise<OrderPublic> {
   const response = await authorizedFetch("/api/orders", {
     method: "POST",
+    body: JSON.stringify(input),
   });
   const data = await parseJson(response);
   if (!response.ok) {
