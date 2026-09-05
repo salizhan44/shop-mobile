@@ -14,6 +14,7 @@ import { useAppTheme } from "../lib/theme-context";
 import type { ProductPublic } from "../lib/api";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import { HeartIcon } from "../components/HeartIcon";
+import { CatalogPromoSlider } from "../components/CatalogPromoSlider";
 import type { CatalogScreenProps } from "./catalog-screen.shared";
 
 const GRID_PADDING = 8;
@@ -121,7 +122,9 @@ export function CatalogScreen(props: CatalogScreenProps) {
           </View>
           <Text style={styles.catalogSection}>Каталог</Text>
         </View>
-      ) : null}
+      ) : (
+        <CatalogPromoSlider />
+      )}
 
       {props.catalogError ? (
         <Text style={styles.error}>{props.catalogError}</Text>

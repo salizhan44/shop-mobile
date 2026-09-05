@@ -12,7 +12,8 @@
     },
     "android": {
       "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true
+      "usesCleartextTraffic": true,
+      "softwareKeyboardLayoutMode": "resize"
     },
     "plugins": ["expo-secure-store"]
   }

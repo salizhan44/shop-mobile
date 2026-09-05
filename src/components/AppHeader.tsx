@@ -33,8 +33,15 @@ export function AppHeader(props: AppHeaderProps) {
   }
 
   if (chrome) {
+    const topPad = insets.top + 6.4;
+    const bottomPad = chrome.showSearch ? 9.6 : 4;
     return (
-      <View style={[styles.catalogHeader, { paddingTop: insets.top + 8 }]}>
+      <View
+        style={[
+          styles.catalogHeader,
+          { paddingTop: topPad, paddingBottom: bottomPad },
+        ]}
+      >
         <View style={styles.catalogTopRow}>
           <View style={styles.topSide}>
             <Pressable
@@ -79,7 +86,7 @@ export function AppHeader(props: AppHeaderProps) {
   }
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+    <View style={[styles.header, { paddingTop: insets.top + 6.4 }]}>
       <View style={styles.left}>
         {props.onBack ? (
           <Pressable onPress={goBack} style={styles.backButton}>
@@ -119,7 +126,6 @@ function createStyles(colors: AppThemeColors) {
       zIndex: 20,
       elevation: 8,
       paddingHorizontal: 16,
-      paddingBottom: 12,
       backgroundColor: colors.headerBackground,
     },
     catalogTopRow: {
@@ -127,7 +133,7 @@ function createStyles(colors: AppThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      minHeight: Math.round(HEADER_LOGO_HEIGHT + 12),
+      minHeight: Math.round(HEADER_LOGO_HEIGHT + 8),
       marginBottom: 3.4,
     },
     logoCenter: {

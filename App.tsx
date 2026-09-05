@@ -370,7 +370,7 @@ function AppContent() {
         mediaTypes: ["images"],
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.28,
+        quality: 0.2,
         base64: true,
       });
       if (picked.canceled || !picked.assets[0]) {
@@ -380,9 +380,12 @@ function AppContent() {
       if (!asset.base64) {
         throw new Error("Не удалось прочитать фото");
       }
-      const mime = asset.mimeType ?? "image/jpeg";
+      const mime =
+        asset.mimeType === "image/png" || asset.mimeType === "image/webp"
+          ? asset.mimeType
+          : "image/jpeg";
       const avatarUrl = `data:${mime};base64,${asset.base64}`;
-      if (avatarUrl.length > 1_400_000) {
+      if (avatarUrl.length > 1_200_000) {
         throw new Error("Фото слишком большое — выберите другое или обрежьте сильнее");
       }
       const next = await updateMyProfile({ avatarUrl });
@@ -732,7 +735,7 @@ function AppContent() {
     <View
       style={[
         styles.authContainer,
-        { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
+        { paddingTop: insets.top + 24 * 0.8, paddingBottom: insets.bottom + 24 },
       ]}
     >
       <StatusBar style={mode === "dark" ? "light" : "dark"} />

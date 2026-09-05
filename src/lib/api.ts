@@ -54,6 +54,53 @@ function resolveApiUrl(): string {
 
 const API_URL = resolveApiUrl();
 
+/** Абсолютный URL для аватаров и прочих /uploads с API. */
+export function resolveMediaUrl(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return "";
+  }
+  if (
+    trimmed.startsWith("data:") ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://")
+  ) {
+    return trimmed;
+  }
+  if (trimmed.startsWith("/")) {
+    return `${API_URL}${trimmed}`;
+  }
+  return `${API_URL}/${trimmed}`;
+}
+
+function readCustomerPayload(data: unknown): CustomerPublic | null {
+  if (!data || typeof data !== "object" || !("customer" in data)) {
+    return null;
+  }
+  const raw = (data as { customer: unknown }).customer;
+  if (!raw || typeof raw !== "object") {
+    return null;
+  }
+  const body = raw as Record<string, unknown>;
+  if (
+    typeof body.id !== "string" ||
+    typeof body.email !== "string" ||
+    typeof body.name !== "string"
+  ) {
+    return null;
+  }
+  const avatarUrl =
+    typeof body.avatarUrl === "string" ? body.avatarUrl : "";
+  return {
+    id: body.id,
+    email: body.email,
+    name: body.name,
+    homeAddress:
+      typeof body.homeAddress === "string" ? body.homeAddress : "",
+    avatarUrl: resolveMediaUrl(avatarUrl),
+  };
+}
+
 async function parseJson(response: Response): Promise<unknown> {
   return response.json().catch(() => null);
 }
@@ -76,7 +123,7 @@ export async function registerCustomer(input: {
         : "Не удалось зарегистрироваться";
     throw new Error(message);
   }
-  return data as CustomerAuthSuccess;
+  return normalizeAuthSuccess(data);
 }
 
 export async function loginCustomer(input: {
@@ -96,7 +143,29 @@ export async function loginCustomer(input: {
         : "Не удалось войти";
     throw new Error(message);
   }
-  return data as CustomerAuthSuccess;
+  return normalizeAuthSuccess(data);
+}
+
+function normalizeAuthSuccess(data: unknown): CustomerAuthSuccess {
+  if (!data || typeof data !== "object") {
+    throw new Error("Некорректный ответ сервера");
+  }
+  const body = data as Record<string, unknown>;
+  if (
+    typeof body.accessToken !== "string" ||
+    typeof body.refreshToken !== "string"
+  ) {
+    throw new Error("Некорректный ответ сервера");
+  }
+  const customer = readCustomerPayload({ customer: body.customer });
+  if (!customer) {
+    throw new Error("Некорректный ответ сервера");
+  }
+  return {
+    accessToken: body.accessToken,
+    refreshToken: body.refreshToken,
+    customer,
+  };
 }
 
 export async function fetchProducts(): Promise<ProductPublic[]> {
@@ -140,7 +209,20 @@ function isCartPublic(value: unknown): value is CartPublic {
 
 function errorMessage(data: unknown, fallback: string): string {
   if (data && typeof data === "object" && "error" in data) {
-    return String((data as ApiErrorBody).error);
+    const raw = String((data as ApiErrorBody).error ?? "").trim();
+    if (!raw) {
+      return fallback;
+    }
+    // Не показываем сырые стеки Prisma/Next в UI.
+    if (
+      raw.length > 180 ||
+      raw.includes("Prisma") ||
+      raw.includes("\n") ||
+      raw.includes("at ")
+    ) {
+      return fallback;
+    }
+    return raw;
   }
   return fallback;
 }
@@ -159,7 +241,7 @@ async function refreshSession(): Promise<boolean> {
   if (!response.ok) {
     return false;
   }
-  await saveSession(data as CustomerAuthSuccess);
+  await saveSession(normalizeAuthSuccess(data));
   return true;
 }
 
@@ -429,10 +511,7 @@ export async function fetchMyProfile(): Promise<CustomerPublic> {
   if (!response.ok) {
     throw new Error(errorMessage(data, "Не удалось загрузить профиль"));
   }
-  const customer =
-    data && typeof data === "object" && "customer" in data
-      ? (data as { customer: CustomerPublic }).customer
-      : null;
+  const customer = readCustomerPayload(data);
   if (!customer) {
     throw new Error("Некорректный ответ профиля");
   }
@@ -452,10 +531,7 @@ export async function updateMyProfile(input: {
   if (!response.ok) {
     throw new Error(errorMessage(data, "Не удалось сохранить профиль"));
   }
-  const customer =
-    data && typeof data === "object" && "customer" in data
-      ? (data as { customer: CustomerPublic }).customer
-      : null;
+  const customer = readCustomerPayload(data);
   if (!customer) {
     throw new Error("Некорректный ответ профиля");
   }

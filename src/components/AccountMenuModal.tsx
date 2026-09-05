@@ -22,7 +22,7 @@ export function AccountMenuModal(props: {
     >
       <View style={styles.root}>
         <Pressable style={styles.backdrop} onPress={props.onClose} />
-        <View style={[styles.menuWrap, { top: insets.top + 110 }]}>
+        <View style={[styles.menuWrap, { top: insets.top + 96 }]}>
           <View style={styles.menu}>
             <Pressable
               style={styles.menuItem}
