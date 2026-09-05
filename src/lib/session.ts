@@ -41,7 +41,39 @@ export async function getRefreshToken(): Promise<string | null> {
 export async function saveSession(auth: CustomerAuthSuccess): Promise<void> {
   await writeValue(ACCESS_KEY, auth.accessToken);
   await writeValue(REFRESH_KEY, auth.refreshToken);
-  await writeValue(CUSTOMER_KEY, JSON.stringify(auth.customer));
+  await saveCustomer(auth.customer);
+}
+
+export async function saveCustomer(customer: CustomerPublic): Promise<void> {
+  // SecureStore ~2KB: большой data:avatar не влезает и ломал сохранение профиля.
+  const forStorage: CustomerPublic = {
+    ...normalizeCustomer(customer)!,
+    avatarUrl:
+      customer.avatarUrl.length > 1500 ? "" : customer.avatarUrl,
+  };
+  await writeValue(CUSTOMER_KEY, JSON.stringify(forStorage));
+}
+
+export function normalizeCustomer(value: unknown): CustomerPublic | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+  const body = value as Record<string, unknown>;
+  if (
+    typeof body.id !== "string" ||
+    typeof body.email !== "string" ||
+    typeof body.name !== "string"
+  ) {
+    return null;
+  }
+  return {
+    id: body.id,
+    email: body.email,
+    name: body.name,
+    homeAddress:
+      typeof body.homeAddress === "string" ? body.homeAddress : "",
+    avatarUrl: typeof body.avatarUrl === "string" ? body.avatarUrl : "",
+  };
 }
 
 export async function loadCustomer(): Promise<CustomerPublic | null> {
@@ -50,7 +82,7 @@ export async function loadCustomer(): Promise<CustomerPublic | null> {
     return null;
   }
   try {
-    return JSON.parse(raw) as CustomerPublic;
+    return normalizeCustomer(JSON.parse(raw) as unknown);
   } catch {
     return null;
   }

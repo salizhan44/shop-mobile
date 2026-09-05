@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { APP_THEME } from "../lib/app-theme.shared";
+import type { AppThemeColors } from "../lib/app-theme.shared";
+import { useAppTheme } from "../lib/theme-context";
 
 export function PasswordInput(props: {
   value: string;
@@ -8,11 +9,14 @@ export function PasswordInput(props: {
   placeholder?: string;
 }) {
   const [visible, setVisible] = useState(false);
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
 
   return (
     <View style={styles.row}>
       <TextInput
         placeholder={props.placeholder ?? "Пароль"}
+        placeholderTextColor={colors.textMuted}
         secureTextEntry={!visible}
         value={props.value}
         onChangeText={props.onChangeText}
@@ -28,32 +32,34 @@ export function PasswordInput(props: {
   );
 }
 
-const styles = StyleSheet.create({
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  input: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: APP_THEME.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: APP_THEME.cardBackground,
-    color: APP_THEME.textPrimary,
-  },
-  toggle: {
-    borderWidth: 1,
-    borderColor: APP_THEME.border,
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
-    backgroundColor: APP_THEME.cardBackground,
-  },
-  toggleText: {
-    color: APP_THEME.textPrimary,
-    fontSize: 13,
-  },
-});
+function createStyles(colors: AppThemeColors) {
+  return StyleSheet.create({
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    input: {
+      flex: 1,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.inputBackground,
+      color: colors.textPrimary,
+    },
+    toggle: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 10,
+      paddingVertical: 10,
+      backgroundColor: colors.cardBackground,
+    },
+    toggleText: {
+      color: colors.textPrimary,
+      fontSize: 13,
+    },
+  });
+}

@@ -11,14 +11,17 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { AppHeader } from "../components/AppHeader";
-import { APP_THEME } from "../lib/app-theme.shared";
+import type { AppThemeColors } from "../lib/app-theme.shared";
+import { useAppTheme } from "../lib/theme-context";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import type { CheckoutScreenProps } from "./checkout-screen.shared";
 
 export function CheckoutScreen(props: CheckoutScreenProps) {
+  const { colors, mode } = useAppTheme();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState(props.initialAddress ?? "");
   const [comment, setComment] = useState("");
   const [formError, setFormError] = useState("");
 
@@ -41,7 +44,7 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
+      <StatusBar style={mode === "dark" ? "light" : "dark"} />
       <AppHeader title="Оформление" onBack={props.onBack} />
 
       <ScrollView
@@ -73,7 +76,7 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
           value={phone}
           onChangeText={setPhone}
           placeholder="+996 700 000 000"
-          placeholderTextColor={APP_THEME.textMuted}
+          placeholderTextColor={colors.textMuted}
           keyboardType="phone-pad"
           style={styles.input}
         />
@@ -82,7 +85,7 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
           value={address}
           onChangeText={setAddress}
           placeholder="Город, улица, дом, квартира"
-          placeholderTextColor={APP_THEME.textMuted}
+          placeholderTextColor={colors.textMuted}
           style={styles.input}
         />
         <Text style={styles.label}>Комментарий</Text>
@@ -90,7 +93,7 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
           value={comment}
           onChangeText={setComment}
           placeholder="Необязательно"
-          placeholderTextColor={APP_THEME.textMuted}
+          placeholderTextColor={colors.textMuted}
           multiline
           style={[styles.input, styles.textarea]}
         />
@@ -115,98 +118,100 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: APP_THEME.screenBackground,
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    gap: 8,
-    paddingBottom: 24,
-  },
-  sectionTitle: {
-    marginTop: 8,
-    marginBottom: 4,
-    fontSize: 16,
-    fontWeight: "700",
-    color: APP_THEME.textPrimary,
-  },
-  card: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: APP_THEME.cardBackground,
-    borderWidth: 1,
-    borderColor: APP_THEME.cardBorder,
-    gap: 4,
-  },
-  cardTitle: {
-    fontWeight: "600",
-    color: APP_THEME.textPrimary,
-  },
-  muted: {
-    color: APP_THEME.textMuted,
-    fontSize: 13,
-  },
-  totalRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 4,
-    marginBottom: 8,
-  },
-  totalLabel: {
-    color: APP_THEME.textMuted,
-  },
-  totalValue: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: APP_THEME.accent,
-  },
-  label: {
-    marginTop: 4,
-    fontSize: 13,
-    fontWeight: "600",
-    color: APP_THEME.textMuted,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: APP_THEME.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: APP_THEME.cardBackground,
-    color: APP_THEME.textPrimary,
-  },
-  textarea: {
-    minHeight: 88,
-    textAlignVertical: "top",
-  },
-  error: {
-    color: APP_THEME.error,
-    marginTop: 4,
-  },
-  footer: {
-    padding: 16,
-    backgroundColor: APP_THEME.cardBackground,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: APP_THEME.border,
-  },
-  button: {
-    backgroundColor: APP_THEME.buttonBackground,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: APP_THEME.buttonText,
-    fontWeight: "700",
-    fontSize: 16,
-  },
-});
+function createStyles(colors: AppThemeColors) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.screenBackground,
+    },
+    scroll: {
+      flex: 1,
+    },
+    content: {
+      padding: 16,
+      gap: 8,
+      paddingBottom: 24,
+    },
+    sectionTitle: {
+      marginTop: 8,
+      marginBottom: 4,
+      fontSize: 16,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    card: {
+      borderRadius: 12,
+      padding: 12,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      gap: 4,
+    },
+    cardTitle: {
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    muted: {
+      color: colors.textMuted,
+      fontSize: 13,
+    },
+    totalRow: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+      marginTop: 4,
+      marginBottom: 8,
+    },
+    totalLabel: {
+      color: colors.textMuted,
+    },
+    totalValue: {
+      fontSize: 18,
+      fontWeight: "700",
+      color: colors.accent,
+    },
+    label: {
+      marginTop: 4,
+      fontSize: 13,
+      fontWeight: "600",
+      color: colors.textMuted,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.cardBackground,
+      color: colors.textPrimary,
+    },
+    textarea: {
+      minHeight: 88,
+      textAlignVertical: "top",
+    },
+    error: {
+      color: colors.error,
+      marginTop: 4,
+    },
+    footer: {
+      padding: 16,
+      backgroundColor: colors.cardBackground,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    button: {
+      backgroundColor: colors.buttonBackground,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    buttonDisabled: {
+      opacity: 0.6,
+    },
+    buttonText: {
+      color: colors.buttonText,
+      fontWeight: "700",
+      fontSize: 16,
+    },
+  });
+}

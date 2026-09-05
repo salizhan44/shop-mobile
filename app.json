@@ -4,8 +4,8 @@
     "slug": "shop-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "backgroundColor": "#ffffff",
-    "userInterfaceStyle": "light",
+    "backgroundColor": "#EAF3F9",
+    "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true

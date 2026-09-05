@@ -5,5 +5,7 @@ export type CatalogScreenProps = {
   catalogError: string;
   addingProductId: string | null;
   searchApplied: string;
+  favoriteIds: readonly string[];
   onAdd: (productId: string) => void;
+  onToggleFavorite: (productId: string) => void;
 };

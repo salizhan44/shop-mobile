@@ -1,7 +1,8 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { APP_THEME } from "../lib/app-theme.shared";
+import type { AppThemeColors } from "../lib/app-theme.shared";
+import { useAppTheme } from "../lib/theme-context";
 import {
   formatPriceSomLabel,
   orderStatusLabel,
@@ -9,11 +10,13 @@ import {
 import type { OrderSuccessScreenProps } from "./order-success-screen.shared";
 
 export function OrderSuccessScreen(props: OrderSuccessScreenProps) {
+  const { colors, mode } = useAppTheme();
+  const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      <StatusBar style="dark" />
+      <StatusBar style={mode === "dark" ? "light" : "dark"} />
       <View style={styles.hero}>
         <Text style={styles.heroIcon}>✓</Text>
         <Text style={styles.title}>Заказ оформлен</Text>
@@ -60,90 +63,92 @@ export function OrderSuccessScreen(props: OrderSuccessScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: APP_THEME.screenBackground,
-  },
-  hero: {
-    alignItems: "center",
-    paddingHorizontal: 24,
-    paddingBottom: 12,
-    gap: 6,
-  },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    lineHeight: 56,
-    textAlign: "center",
-    borderRadius: 28,
-    overflow: "hidden",
-    backgroundColor: "#dcfce7",
-    color: "#15803d",
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "700",
-    color: APP_THEME.textPrimary,
-  },
-  muted: {
-    color: APP_THEME.textMuted,
-    textAlign: "center",
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 12,
-    gap: 8,
-  },
-  card: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: APP_THEME.cardBackground,
-    borderWidth: 1,
-    borderColor: APP_THEME.cardBorder,
-  },
-  cardTitle: {
-    fontWeight: "600",
-    color: APP_THEME.textPrimary,
-  },
-  footer: {
-    padding: 16,
-    gap: 10,
-    backgroundColor: APP_THEME.cardBackground,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: APP_THEME.border,
-  },
-  total: {
-    fontWeight: "700",
-    fontSize: 18,
-    color: APP_THEME.accent,
-  },
-  hint: {
-    color: APP_THEME.textMuted,
-    fontSize: 13,
-  },
-  button: {
-    backgroundColor: APP_THEME.buttonBackground,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: APP_THEME.buttonText,
-    fontWeight: "700",
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: APP_THEME.border,
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  secondaryButtonText: {
-    color: APP_THEME.textPrimary,
-  },
-});
+function createStyles(colors: AppThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.screenBackground,
+    },
+    hero: {
+      alignItems: "center",
+      paddingHorizontal: 24,
+      paddingBottom: 12,
+      gap: 6,
+    },
+    heroIcon: {
+      width: 56,
+      height: 56,
+      lineHeight: 56,
+      textAlign: "center",
+      borderRadius: 28,
+      overflow: "hidden",
+      backgroundColor: colors.logoMarkBg,
+      color: colors.updateIndicator,
+      fontSize: 28,
+      fontWeight: "700",
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    muted: {
+      color: colors.textMuted,
+      textAlign: "center",
+    },
+    list: {
+      flex: 1,
+    },
+    listContent: {
+      padding: 12,
+      gap: 8,
+    },
+    card: {
+      borderRadius: 12,
+      padding: 12,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+    },
+    cardTitle: {
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    footer: {
+      padding: 16,
+      gap: 10,
+      backgroundColor: colors.cardBackground,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: colors.border,
+    },
+    total: {
+      fontWeight: "700",
+      fontSize: 18,
+      color: colors.accent,
+    },
+    hint: {
+      color: colors.textMuted,
+      fontSize: 13,
+    },
+    button: {
+      backgroundColor: colors.buttonBackground,
+      borderRadius: 14,
+      paddingVertical: 14,
+      alignItems: "center",
+    },
+    buttonText: {
+      color: colors.buttonText,
+      fontWeight: "700",
+    },
+    secondaryButton: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 14,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+    secondaryButtonText: {
+      color: colors.textPrimary,
+    },
+  });
+}

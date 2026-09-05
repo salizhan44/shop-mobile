@@ -1,5 +1,6 @@
-import { ScrollView, StyleSheet, Text, View } from "react-native";
-import { APP_THEME } from "../lib/app-theme.shared";
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { AppThemeColors } from "../lib/app-theme.shared";
+import { useAppTheme } from "../lib/theme-context";
 import {
   formatOrderDate,
   formatPriceSomLabel,
@@ -8,6 +9,9 @@ import {
 import type { OrdersScreenProps } from "./orders-screen.shared";
 
 export function OrdersScreen(props: OrdersScreenProps) {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
+
   return (
     <ScrollView
       style={styles.scroll}
@@ -15,6 +19,14 @@ export function OrdersScreen(props: OrdersScreenProps) {
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator
+      refreshControl={
+        <RefreshControl
+          refreshing={props.refreshing}
+          onRefresh={props.onRefresh}
+          tintColor={colors.accent}
+          colors={[colors.accent]}
+        />
+      }
     >
       {props.error ? <Text style={styles.error}>{props.error}</Text> : null}
       {props.orders.length === 0 && !props.error ? (
@@ -66,78 +78,80 @@ export function OrdersScreen(props: OrdersScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    flexGrow: 1,
-    padding: 12,
-    paddingBottom: 24,
-    gap: 10,
-  },
-  error: {
-    color: APP_THEME.error,
-  },
-  errorInline: {
-    color: APP_THEME.error,
-    fontSize: 13,
-  },
-  empty: {
-    alignItems: "center",
-    paddingVertical: 48,
-    gap: 8,
-  },
-  emptyIcon: {
-    fontSize: 40,
-    color: APP_THEME.textMuted,
-  },
-  muted: {
-    color: APP_THEME.textPrimary,
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  card: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: APP_THEME.cardBackground,
-    borderWidth: 1,
-    borderColor: APP_THEME.cardBorder,
-    gap: 6,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    gap: 8,
-  },
-  cardTitle: {
-    flex: 1,
-    fontWeight: "700",
-    color: APP_THEME.textPrimary,
-  },
-  statusBadge: {
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    backgroundColor: APP_THEME.screenBackground,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: APP_THEME.textPrimary,
-  },
-  date: {
-    fontSize: 13,
-    color: APP_THEME.textMuted,
-  },
-  itemLine: {
-    fontSize: 13,
-    color: APP_THEME.textMuted,
-  },
-  total: {
-    marginTop: 4,
-    fontWeight: "700",
-    color: APP_THEME.accent,
-  },
-});
+function createStyles(colors: AppThemeColors) {
+  return StyleSheet.create({
+    scroll: {
+      flex: 1,
+    },
+    content: {
+      flexGrow: 1,
+      padding: 12,
+      paddingBottom: 24,
+      gap: 10,
+    },
+    error: {
+      color: colors.error,
+    },
+    errorInline: {
+      color: colors.error,
+      fontSize: 13,
+    },
+    empty: {
+      alignItems: "center",
+      paddingVertical: 48,
+      gap: 8,
+    },
+    emptyIcon: {
+      fontSize: 40,
+      color: colors.textMuted,
+    },
+    muted: {
+      color: colors.textPrimary,
+      fontSize: 16,
+      fontWeight: "600",
+    },
+    card: {
+      borderRadius: 12,
+      padding: 12,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      gap: 6,
+    },
+    cardHeader: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+      gap: 8,
+    },
+    cardTitle: {
+      flex: 1,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    statusBadge: {
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      backgroundColor: colors.screenBackground,
+    },
+    statusText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textPrimary,
+    },
+    date: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    itemLine: {
+      fontSize: 13,
+      color: colors.textMuted,
+    },
+    total: {
+      marginTop: 4,
+      fontWeight: "700",
+      color: colors.accent,
+    },
+  });
+}

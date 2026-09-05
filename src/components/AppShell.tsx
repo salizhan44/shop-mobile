@@ -1,6 +1,7 @@
 import { StyleSheet, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { APP_THEME } from "../lib/app-theme.shared";
+import type { AppThemeColors } from "../lib/app-theme.shared";
+import { useAppTheme } from "../lib/theme-context";
 import { mainTabLabel } from "../lib/main-tab.shared";
 import type { AppShellProps } from "../lib/app-shell.shared";
 import { AccountMenuModal } from "./AccountMenuModal";
@@ -8,18 +9,21 @@ import { AppHeader } from "./AppHeader";
 import { BottomTabBar } from "./BottomTabBar";
 
 export function AppShell(props: AppShellProps) {
-  const showSearch = props.activeTab === "catalog" && props.catalogSearch;
+  const { colors, mode } = useAppTheme();
+  const styles = createStyles(colors);
 
   return (
     <View style={styles.root}>
-      <StatusBar style="dark" />
+      <StatusBar style={mode === "dark" ? "light" : "dark"} />
       <AppHeader
-        title={showSearch ? undefined : props.title}
-        searchBar={showSearch ? props.catalogSearch : undefined}
-        refresh={
-          props.activeTab === "orders" ? props.ordersRefresh : undefined
+        catalogChrome={
+          props.catalogChrome
+            ? {
+                ...props.catalogChrome,
+                showSearch: props.activeTab === "catalog",
+              }
+            : undefined
         }
-        onOpenMenu={props.onOpenAccountMenu}
       />
       <View style={styles.content}>{props.children}</View>
       <BottomTabBar
@@ -30,7 +34,6 @@ export function AppShell(props: AppShellProps) {
       />
       <AccountMenuModal
         visible={props.accountMenuOpen}
-        customerName={props.customerName}
         onClose={props.onCloseAccountMenu}
         onOpenSupport={props.onOpenSupport}
         onLogout={props.onLogout}
@@ -43,12 +46,16 @@ export function getMainTabTitle(tab: AppShellProps["activeTab"]): string {
   return mainTabLabel(tab);
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: APP_THEME.screenBackground,
-  },
-  content: {
-    flex: 1,
-  },
-});
+function createStyles(colors: AppThemeColors) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: colors.screenBackground,
+    },
+    content: {
+      flex: 1,
+      minHeight: 0,
+      zIndex: 0,
+    },
+  });
+}

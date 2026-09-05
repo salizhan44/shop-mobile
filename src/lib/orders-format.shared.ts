@@ -16,7 +16,7 @@ export function formatOrderDate(iso: string): string {
 }
 
 export function formatPriceSom(priceCents: number): string {
-  return (priceCents / 100).toFixed(2);
+  return String(Math.trunc(priceCents / 100));
 }
 
 export function formatPriceSomLabel(priceCents: number): string {

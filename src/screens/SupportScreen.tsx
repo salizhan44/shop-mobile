@@ -8,7 +8,8 @@ import {
   View,
 } from "react-native";
 import { RefreshWithUpdates } from "../components/RefreshWithUpdates";
-import { APP_THEME } from "../lib/app-theme.shared";
+import type { AppThemeColors } from "../lib/app-theme.shared";
+import { useAppTheme } from "../lib/theme-context";
 import {
   formatSupportTicketDate,
   supportTicketStatusLabel,
@@ -16,6 +17,8 @@ import {
 import type { SupportScreenProps } from "./support-screen.shared";
 
 export function SupportScreen(props: SupportScreenProps) {
+  const { colors } = useAppTheme();
+  const styles = createStyles(colors);
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [formError, setFormError] = useState("");
@@ -56,7 +59,7 @@ export function SupportScreen(props: SupportScreenProps) {
             value={subject}
             onChangeText={setSubject}
             style={styles.input}
-            placeholderTextColor={APP_THEME.textMuted}
+            placeholderTextColor={colors.textMuted}
           />
           <TextInput
             placeholder="Опишите проблему или вопрос"
@@ -64,7 +67,7 @@ export function SupportScreen(props: SupportScreenProps) {
             onChangeText={setBody}
             multiline
             style={[styles.input, styles.textarea]}
-            placeholderTextColor={APP_THEME.textMuted}
+            placeholderTextColor={colors.textMuted}
           />
           {formError ? <Text style={styles.error}>{formError}</Text> : null}
           <Pressable
@@ -101,86 +104,88 @@ export function SupportScreen(props: SupportScreenProps) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  toolbar: {
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  scroll: {
-    flex: 1,
-  },
-  content: {
-    padding: 12,
-    paddingBottom: 24,
-    gap: 10,
-  },
-  formCard: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: APP_THEME.cardBackground,
-    borderWidth: 1,
-    borderColor: APP_THEME.cardBorder,
-    gap: 8,
-  },
-  formTitle: {
-    fontWeight: "700",
-    color: APP_THEME.textPrimary,
-  },
-  sectionTitle: {
-    marginTop: 4,
-    fontWeight: "700",
-    color: APP_THEME.textPrimary,
-  },
-  muted: {
-    color: APP_THEME.textMuted,
-  },
-  error: {
-    color: APP_THEME.error,
-    paddingHorizontal: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: APP_THEME.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: APP_THEME.screenBackground,
-    color: APP_THEME.textPrimary,
-  },
-  textarea: {
-    minHeight: 100,
-    textAlignVertical: "top",
-  },
-  button: {
-    backgroundColor: APP_THEME.buttonBackground,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: APP_THEME.buttonText,
-    fontWeight: "600",
-  },
-  card: {
-    borderRadius: 12,
-    padding: 12,
-    backgroundColor: APP_THEME.cardBackground,
-    borderWidth: 1,
-    borderColor: APP_THEME.cardBorder,
-    gap: 4,
-  },
-  cardTitle: {
-    fontWeight: "700",
-    color: APP_THEME.textPrimary,
-  },
-  body: {
-    color: APP_THEME.textPrimary,
-  },
-  reply: {
-    color: APP_THEME.textMuted,
-  },
-});
+function createStyles(colors: AppThemeColors) {
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+    },
+    toolbar: {
+      paddingHorizontal: 12,
+      paddingTop: 8,
+      paddingBottom: 4,
+    },
+    scroll: {
+      flex: 1,
+    },
+    content: {
+      padding: 12,
+      paddingBottom: 24,
+      gap: 10,
+    },
+    formCard: {
+      borderRadius: 12,
+      padding: 12,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      gap: 8,
+    },
+    formTitle: {
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    sectionTitle: {
+      marginTop: 4,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    muted: {
+      color: colors.textMuted,
+    },
+    error: {
+      color: colors.error,
+      paddingHorizontal: 4,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.screenBackground,
+      color: colors.textPrimary,
+    },
+    textarea: {
+      minHeight: 100,
+      textAlignVertical: "top",
+    },
+    button: {
+      backgroundColor: colors.buttonBackground,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+    buttonText: {
+      color: colors.buttonText,
+      fontWeight: "600",
+    },
+    card: {
+      borderRadius: 12,
+      padding: 12,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      gap: 4,
+    },
+    cardTitle: {
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    body: {
+      color: colors.textPrimary,
+    },
+    reply: {
+      color: colors.textMuted,
+    },
+  });
+}

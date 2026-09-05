@@ -1,4 +1,4 @@
-export const MAIN_TABS = ["catalog", "cart", "orders"] as const;
+export const MAIN_TABS = ["catalog", "cart", "orders", "profile"] as const;
 
 export type MainTab = (typeof MAIN_TABS)[number];
 
@@ -10,6 +10,8 @@ export function mainTabLabel(tab: MainTab): string {
       return "Корзина";
     case "orders":
       return "Мои заказы";
+    case "profile":
+      return "Профиль";
   }
 }
 
@@ -21,5 +23,7 @@ export function mainTabIcon(tab: MainTab): string {
       return "◫";
     case "orders":
       return "☰";
+    case "profile":
+      return "";
   }
 }

@@ -19,11 +19,13 @@ import {
   fetchSupportTickets,
   fetchSupportTicketUpdates,
   fetchMyOrders,
+  fetchMyProfile,
   fetchProducts,
   loginCustomer,
   registerCustomer,
   removeCartItem,
   updateCartItemQuantity,
+  updateMyProfile,
   type CartPublic,
   type CustomerPublic,
   type OrderPublic,
@@ -31,21 +33,30 @@ import {
   type SupportTicketPublic,
 } from "./src/lib/api";
 import type { AppScreen } from "./src/lib/app-screen.shared";
-import { APP_THEME } from "./src/lib/app-theme.shared";
+import type { AppThemeColors } from "./src/lib/app-theme.shared";
+import { ThemeProvider, useAppTheme } from "./src/lib/theme-context";
 import type { MainTab } from "./src/lib/main-tab.shared";
 import { getMainTabTitle } from "./src/components/AppShell";
 import { normalizeSearchQuery } from "./src/lib/catalog-search.shared";
 import { UPDATES_POLL_INTERVAL_MS } from "./src/lib/updates.shared";
-import { clearSession, loadCustomer, saveSession } from "./src/lib/session";
+import { clearSession, loadCustomer, saveCustomer, saveSession } from "./src/lib/session";
+import {
+  loadFavoriteIds,
+  saveFavoriteIds,
+  toggleFavoriteId,
+} from "./src/lib/favorites-storage";
 import { AppHeader } from "./src/components/AppHeader";
 import { AppShell } from "./src/components/AppShell";
+import { BrandLogo } from "./src/components/BrandLogo";
 import { PasswordInput } from "./src/components/PasswordInput";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CatalogScreen } from "./src/screens/CatalogScreen";
 import { CheckoutScreen } from "./src/screens/CheckoutScreen";
 import { OrderSuccessScreen } from "./src/screens/OrderSuccessScreen";
 import { OrdersScreen } from "./src/screens/OrdersScreen";
+import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SupportScreen } from "./src/screens/SupportScreen";
+import * as ImagePicker from "expo-image-picker";
 
 const emptyCart: CartPublic = { items: [], totalCents: 0 };
 
@@ -55,10 +66,14 @@ function cartItemCount(cart: CartPublic): number {
 
 function AppContent() {
   const insets = useSafeAreaInsets();
+  const { colors, mode } = useAppTheme();
+  const styles = createStyles(colors);
   const [screen, setScreen] = useState<AppScreen>("login");
   const [mainTab, setMainTab] = useState<MainTab>("catalog");
   const [supportOpen, setSupportOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [favoritesOpen, setFavoritesOpen] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [booting, setBooting] = useState(true);
   const [customer, setCustomer] = useState<CustomerPublic | null>(null);
   const [name, setName] = useState("");
@@ -87,18 +102,29 @@ function AppContent() {
   const [supportRefreshPending, setSupportRefreshPending] = useState(false);
   const [catalogSearchDraft, setCatalogSearchDraft] = useState("");
   const [catalogSearchApplied, setCatalogSearchApplied] = useState("");
+  const [profilePending, setProfilePending] = useState(false);
+  const [profileError, setProfileError] = useState("");
 
   const isLoggedIn = customer !== null;
 
   useEffect(() => {
     loadCustomer()
-      .then((saved) => {
-        if (saved) {
-          setCustomer(saved);
-          setMainTab("catalog");
+      .then(async (saved) => {
+        if (!saved) {
+          return;
+        }
+        setCustomer(saved);
+        setMainTab("catalog");
+        try {
+          const profile = await fetchMyProfile();
+          setCustomer(profile);
+          await saveCustomer(profile);
+        } catch {
+          // оставляем локальный профиль, если сеть недоступна
         }
       })
       .finally(() => setBooting(false));
+    void loadFavoriteIds().then(setFavoriteIds);
   }, []);
 
   useEffect(() => {
@@ -252,7 +278,6 @@ function AppContent() {
       setPassword("");
       setMainTab("catalog");
       setSupportOpen(false);
-      setAccountMenuOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Ошибка входа");
     } finally {
@@ -270,7 +295,6 @@ function AppContent() {
       setPassword("");
       setMainTab("catalog");
       setSupportOpen(false);
-      setAccountMenuOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Ошибка регистрации");
     } finally {
@@ -293,8 +317,100 @@ function AppContent() {
     setCart(emptyCart);
     setSupportOpen(false);
     setAccountMenuOpen(false);
+    setFavoritesOpen(false);
     onClearCatalogSearch();
     setScreen("login");
+  }
+
+  async function onToggleFavorite(productId: string) {
+    setFavoriteIds((current) => {
+      const next = toggleFavoriteId(current, productId);
+      void saveFavoriteIds(next);
+      return next;
+    });
+  }
+
+  async function applyProfileUpdate(next: CustomerPublic) {
+    setCustomer(next);
+    try {
+      await saveCustomer(next);
+    } catch {
+      // токены/локальный кэш не критичны, если API уже сохранил
+    }
+  }
+
+  async function onSaveProfile(input: {
+    name: string;
+    homeAddress: string;
+  }) {
+    setProfilePending(true);
+    setProfileError("");
+    try {
+      const next = await updateMyProfile(input);
+      await applyProfileUpdate(next);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "Не удалось сохранить профиль";
+      setProfileError(message);
+      throw caught instanceof Error ? caught : new Error(message);
+    } finally {
+      setProfilePending(false);
+    }
+  }
+
+  async function onChangeAvatar() {
+    setProfilePending(true);
+    setProfileError("");
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        throw new Error("Нужен доступ к фото");
+      }
+      const picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.28,
+        base64: true,
+      });
+      if (picked.canceled || !picked.assets[0]) {
+        return;
+      }
+      const asset = picked.assets[0];
+      if (!asset.base64) {
+        throw new Error("Не удалось прочитать фото");
+      }
+      const mime = asset.mimeType ?? "image/jpeg";
+      const avatarUrl = `data:${mime};base64,${asset.base64}`;
+      if (avatarUrl.length > 1_400_000) {
+        throw new Error("Фото слишком большое — выберите другое или обрежьте сильнее");
+      }
+      const next = await updateMyProfile({ avatarUrl });
+      await applyProfileUpdate(next);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "Не удалось сменить аватар";
+      setProfileError(message);
+      throw caught instanceof Error ? caught : new Error(message);
+    } finally {
+      setProfilePending(false);
+    }
+  }
+
+  async function onRemoveAvatar() {
+    setProfilePending(true);
+    setProfileError("");
+    try {
+      const next = await updateMyProfile({ avatarUrl: "" });
+      await applyProfileUpdate(next);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "Не удалось удалить аватар";
+      setProfileError(message);
+      throw caught instanceof Error ? caught : new Error(message);
+    } finally {
+      setProfilePending(false);
+    }
   }
 
   async function onAdd(productId: string) {
@@ -441,7 +557,7 @@ function AppContent() {
   if (booting) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={APP_THEME.accent} />
+        <ActivityIndicator color={colors.accent} />
       </View>
     );
   }
@@ -452,6 +568,7 @@ function AppContent() {
         cart={cart}
         error={cartError}
         pending={checkoutPending}
+        initialAddress={customer?.homeAddress ?? ""}
         onBack={() => {
           setCartError("");
           setScreen("login");
@@ -472,10 +589,42 @@ function AppContent() {
     );
   }
 
+  if (isLoggedIn && favoritesOpen) {
+    const favoriteProducts = products.filter((product) =>
+      favoriteIds.includes(product.id),
+    );
+    return (
+      <View style={styles.root}>
+        <StatusBar style={mode === "dark" ? "light" : "dark"} />
+        <AppHeader
+          title="Избранное"
+          onBack={() => setFavoritesOpen(false)}
+        />
+        <View style={styles.supportBody}>
+          {favoriteProducts.length === 0 ? (
+            <Text style={{ color: colors.textMuted, padding: 16 }}>
+              Пока ничего нет — нажмите ♡ у товара в каталоге.
+            </Text>
+          ) : (
+            <CatalogScreen
+              products={favoriteProducts}
+              catalogError={catalogError}
+              addingProductId={addingProductId}
+              searchApplied=""
+              favoriteIds={favoriteIds}
+              onAdd={onAdd}
+              onToggleFavorite={onToggleFavorite}
+            />
+          )}
+        </View>
+      </View>
+    );
+  }
+
   if (isLoggedIn && supportOpen) {
     return (
       <View style={styles.root}>
-        <StatusBar style="dark" />
+        <StatusBar style={mode === "dark" ? "light" : "dark"} />
         <AppHeader
           title="Поддержка"
           onBack={() => setSupportOpen(false)}
@@ -500,34 +649,37 @@ function AppContent() {
       <AppShell
         activeTab={mainTab}
         title={getMainTabTitle(mainTab)}
-        customerName={customer?.name ?? ""}
         cartItemCount={cartItemCount(cart)}
         ordersHasUpdates={ordersHasUpdates}
         accountMenuOpen={accountMenuOpen}
-        catalogSearch={{
-          value: catalogSearchDraft,
-          showClear:
-            catalogSearchDraft.length > 0 || catalogSearchApplied.length > 0,
-          onChangeText: setCatalogSearchDraft,
-          onSubmit: onApplyCatalogSearch,
-          onClear: onClearCatalogSearch,
+        catalogChrome={{
+          searchBar: {
+            value: catalogSearchDraft,
+            showClear:
+              catalogSearchDraft.length > 0 ||
+              catalogSearchApplied.length > 0,
+            onChangeText: setCatalogSearchDraft,
+            onSubmit: onApplyCatalogSearch,
+            onClear: onClearCatalogSearch,
+          },
+          favoritesActive: favoriteIds.length > 0,
+          onOpenMenu: () => {
+            Keyboard.dismiss();
+            setAccountMenuOpen(true);
+          },
+          onOpenFavorites: () => {
+            Keyboard.dismiss();
+            setFavoritesOpen(true);
+          },
         }}
         onTabChange={(tab) => {
           Keyboard.dismiss();
+          setFavoritesOpen(false);
           setMainTab(tab);
-        }}
-        onOpenAccountMenu={() => {
-          Keyboard.dismiss();
-          setAccountMenuOpen(true);
         }}
         onCloseAccountMenu={() => setAccountMenuOpen(false)}
         onOpenSupport={() => setSupportOpen(true)}
         onLogout={onLogout}
-        ordersRefresh={{
-          hasUpdates: ordersHasUpdates,
-          pending: ordersRefreshPending,
-          onRefresh: onRefreshOrders,
-        }}
       >
         {mainTab === "catalog" ? (
           <CatalogScreen
@@ -535,7 +687,9 @@ function AppContent() {
             catalogError={catalogError}
             addingProductId={addingProductId}
             searchApplied={catalogSearchApplied}
+            favoriteIds={favoriteIds}
             onAdd={onAdd}
+            onToggleFavorite={onToggleFavorite}
           />
         ) : null}
         {mainTab === "cart" ? (
@@ -550,7 +704,25 @@ function AppContent() {
           />
         ) : null}
         {mainTab === "orders" ? (
-          <OrdersScreen orders={orders} error={ordersError} />
+          <OrdersScreen
+            orders={orders}
+            error={ordersError}
+            refreshing={ordersRefreshPending}
+            onRefresh={() => {
+              void onRefreshOrders();
+            }}
+          />
+        ) : null}
+        {mainTab === "profile" && customer ? (
+          <ProfileScreen
+            customer={customer}
+            pending={profilePending}
+            error={profileError}
+            onSaveProfile={onSaveProfile}
+            onChangeAvatar={onChangeAvatar}
+            onRemoveAvatar={onRemoveAvatar}
+            onLogout={onLogout}
+          />
         ) : null}
       </AppShell>
     );
@@ -563,7 +735,10 @@ function AppContent() {
         { paddingTop: insets.top + 24, paddingBottom: insets.bottom + 24 },
       ]}
     >
-      <StatusBar style="dark" />
+      <StatusBar style={mode === "dark" ? "light" : "dark"} />
+      <View style={styles.authBrand}>
+        <BrandLogo height={Math.round(56 * 1.9 * 1.6)} />
+      </View>
       <Text style={styles.authTitle}>
         {screen === "login" ? "Вход" : "Регистрация"}
       </Text>
@@ -573,7 +748,7 @@ function AppContent() {
           value={name}
           onChangeText={setName}
           style={styles.input}
-          placeholderTextColor={APP_THEME.textMuted}
+          placeholderTextColor={colors.textMuted}
         />
       ) : null}
       <TextInput
@@ -583,7 +758,7 @@ function AppContent() {
         value={email}
         onChangeText={setEmail}
         style={styles.input}
-        placeholderTextColor={APP_THEME.textMuted}
+        placeholderTextColor={colors.textMuted}
       />
       <PasswordInput
         value={password}
@@ -612,66 +787,94 @@ function AppContent() {
             : "Уже есть аккаунт? Вход"}
         </Text>
       </Pressable>
+      <View style={styles.themeHintWrap}>
+        <AuthThemeToggle />
+      </View>
     </View>
+  );
+}
+
+function AuthThemeToggle() {
+  const { mode, toggleMode, colors } = useAppTheme();
+  return (
+    <Pressable onPress={toggleMode}>
+      <Text style={{ color: colors.link, marginTop: 8 }}>
+        {mode === "light" ? "Тёмная тема" : "Светлая тема"}
+      </Text>
+    </Pressable>
   );
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppContent />
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: APP_THEME.screenBackground,
-  },
-  root: {
-    flex: 1,
-    backgroundColor: APP_THEME.screenBackground,
-  },
-  supportBody: {
-    flex: 1,
-  },
-  authContainer: {
-    flex: 1,
-    padding: 24,
-    gap: 12,
-    backgroundColor: APP_THEME.screenBackground,
-  },
-  authTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: APP_THEME.textPrimary,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: APP_THEME.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: APP_THEME.cardBackground,
-    color: APP_THEME.textPrimary,
-  },
-  button: {
-    backgroundColor: APP_THEME.buttonBackground,
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-  },
-  buttonText: {
-    color: APP_THEME.buttonText,
-    fontWeight: "600",
-  },
-  link: {
-    color: APP_THEME.link,
-  },
-  error: {
-    color: APP_THEME.error,
-  },
-});
+function createStyles(colors: AppThemeColors) {
+  return StyleSheet.create({
+    center: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.screenBackground,
+    },
+    root: {
+      flex: 1,
+      backgroundColor: colors.screenBackground,
+    },
+    supportBody: {
+      flex: 1,
+    },
+    authContainer: {
+      flex: 1,
+      padding: 24,
+      gap: 12,
+      backgroundColor: colors.screenBackground,
+      justifyContent: "center",
+    },
+    authBrand: {
+      alignItems: "center",
+      gap: 10,
+      marginBottom: 8,
+    },
+    authTitle: {
+      fontSize: 24,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: colors.inputBackground,
+      color: colors.textPrimary,
+    },
+    button: {
+      backgroundColor: colors.buttonBackground,
+      borderRadius: 12,
+      paddingVertical: 12,
+      alignItems: "center",
+    },
+    buttonText: {
+      color: colors.buttonText,
+      fontWeight: "600",
+    },
+    link: {
+      color: colors.link,
+    },
+    error: {
+      color: colors.error,
+    },
+    themeHintWrap: {
+      alignItems: "center",
+      marginTop: 4,
+    },
+  });
+}

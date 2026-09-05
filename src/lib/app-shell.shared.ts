@@ -8,17 +8,23 @@ export type HeaderRefreshProps = {
   onRefresh: () => void;
 };
 
+export type CatalogChromeProps = {
+  searchBar: CatalogSearchBarProps;
+  /** По умолчанию true; AppShell выключает вне каталога. */
+  showSearch?: boolean;
+  favoritesActive: boolean;
+  onOpenMenu: () => void;
+  onOpenFavorites: () => void;
+};
+
 export type AppShellProps = {
   activeTab: MainTab;
   title: string;
-  customerName: string;
   cartItemCount: number;
   ordersHasUpdates: boolean;
+  catalogChrome?: CatalogChromeProps;
   accountMenuOpen: boolean;
-  catalogSearch?: CatalogSearchBarProps;
-  ordersRefresh?: HeaderRefreshProps;
   onTabChange: (tab: MainTab) => void;
-  onOpenAccountMenu: () => void;
   onCloseAccountMenu: () => void;
   onOpenSupport: () => void;
   onLogout: () => void;
@@ -27,7 +33,7 @@ export type AppShellProps = {
 
 export type AppHeaderProps = {
   title?: string;
-  searchBar?: CatalogSearchBarProps;
+  catalogChrome?: CatalogChromeProps;
   refresh?: HeaderRefreshProps;
   onOpenMenu?: () => void;
   onBack?: () => void;
@@ -38,12 +44,4 @@ export type BottomTabBarProps = {
   cartItemCount: number;
   ordersHasUpdates: boolean;
   onTabChange: (tab: MainTab) => void;
-};
-
-export type AccountMenuModalProps = {
-  visible: boolean;
-  customerName: string;
-  onClose: () => void;
-  onOpenSupport: () => void;
-  onLogout: () => void;
 };

@@ -15,6 +15,8 @@ export type CustomerPublic = {
   id: string;
   email: string;
   name: string;
+  homeAddress: string;
+  avatarUrl: string;
 };
 
 export type CustomerAuthSuccess = {
@@ -419,5 +421,44 @@ export async function fetchSupportTicketUpdates(
   return readUpdatesCheck(
     await authorizedFetch(`/api/support/tickets/updates${query}`),
   );
+}
+
+export async function fetchMyProfile(): Promise<CustomerPublic> {
+  const response = await authorizedFetch("/api/customer/me");
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось загрузить профиль"));
+  }
+  const customer =
+    data && typeof data === "object" && "customer" in data
+      ? (data as { customer: CustomerPublic }).customer
+      : null;
+  if (!customer) {
+    throw new Error("Некорректный ответ профиля");
+  }
+  return customer;
+}
+
+export async function updateMyProfile(input: {
+  name?: string;
+  homeAddress?: string;
+  avatarUrl?: string | null;
+}): Promise<CustomerPublic> {
+  const response = await authorizedFetch("/api/customer/me", {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось сохранить профиль"));
+  }
+  const customer =
+    data && typeof data === "object" && "customer" in data
+      ? (data as { customer: CustomerPublic }).customer
+      : null;
+  if (!customer) {
+    throw new Error("Некорректный ответ профиля");
+  }
+  return customer;
 }
 
