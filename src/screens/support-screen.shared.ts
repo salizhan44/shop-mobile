@@ -4,8 +4,11 @@ export type SupportScreenProps = {
   tickets: SupportTicketPublic[];
   error: string;
   submitPending: boolean;
-  hasUpdates: boolean;
-  refreshPending: boolean;
+  refreshing: boolean;
   onRefresh: () => void;
-  onCreate: (subject: string, body: string) => Promise<void>;
+  onCreate: (
+    subject: string,
+    body: string,
+    imageUrls: string[],
+  ) => Promise<void>;
 };

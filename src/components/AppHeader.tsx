@@ -79,7 +79,31 @@ export function AppHeader(props: AppHeaderProps) {
           </View>
         </View>
         {chrome.showSearch ? (
-          <CatalogSearchBar {...chrome.searchBar} />
+          <View style={styles.searchRow}>
+            <View style={styles.searchBarGrow}>
+              <CatalogSearchBar {...chrome.searchBar} />
+            </View>
+            <Pressable
+              onPress={() => {
+                Keyboard.dismiss();
+                chrome.onOpenFilter?.();
+              }}
+              style={[
+                styles.filterButton,
+                chrome.filterActive ? styles.filterButtonActive : null,
+              ]}
+              accessibilityLabel="Фильтр"
+            >
+              <Text
+                style={[
+                  styles.filterButtonText,
+                  chrome.filterActive ? styles.filterButtonTextActive : null,
+                ]}
+              >
+                Фильтр
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
       </View>
     );
@@ -135,6 +159,37 @@ function createStyles(colors: AppThemeColors) {
       justifyContent: "space-between",
       minHeight: Math.round(HEADER_LOGO_HEIGHT + 8),
       marginBottom: 3.4,
+    },
+    searchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    searchBarGrow: {
+      flex: 1,
+      minWidth: 0,
+    },
+    filterButton: {
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      minHeight: 42,
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: colors.searchBackground,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+    },
+    filterButtonActive: {
+      backgroundColor: colors.buttonBackground,
+      borderColor: colors.buttonBackground,
+    },
+    filterButtonText: {
+      fontSize: 14,
+      fontWeight: "700",
+      color: colors.textPrimary,
+    },
+    filterButtonTextActive: {
+      color: colors.buttonText,
     },
     logoCenter: {
       ...StyleSheet.absoluteFillObject,

@@ -11,22 +11,24 @@ import {
 } from "react-native";
 import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  fetchCategories,
   addProductToCart,
   checkoutOrder,
   fetchCart,
   createSupportTicket,
   fetchOrderUpdates,
   fetchSupportTickets,
-  fetchSupportTicketUpdates,
   fetchMyOrders,
   fetchMyProfile,
   fetchProducts,
   loginCustomer,
+  loginWithGoogleIdToken,
   registerCustomer,
   removeCartItem,
   updateCartItemQuantity,
   updateMyProfile,
   type CartPublic,
+  type CategoryOptionPublic,
   type CustomerPublic,
   type OrderPublic,
   type ProductPublic,
@@ -37,7 +39,13 @@ import type { AppThemeColors } from "./src/lib/app-theme.shared";
 import { ThemeProvider, useAppTheme } from "./src/lib/theme-context";
 import type { MainTab } from "./src/lib/main-tab.shared";
 import { getMainTabTitle } from "./src/components/AppShell";
-import { normalizeSearchQuery } from "./src/lib/catalog-search.shared";
+import {
+  EMPTY_CATALOG_FILTER,
+  isCatalogFilterActive,
+  normalizeSearchQuery,
+  type CatalogFilterApplied,
+} from "./src/lib/catalog-search.shared";
+import { CatalogFilterModal } from "./src/components/CatalogFilterModal";
 import { UPDATES_POLL_INTERVAL_MS } from "./src/lib/updates.shared";
 import { clearSession, loadCustomer, saveCustomer, saveSession } from "./src/lib/session";
 import {
@@ -48,6 +56,7 @@ import {
 import { AppHeader } from "./src/components/AppHeader";
 import { AppShell } from "./src/components/AppShell";
 import { BrandLogo } from "./src/components/BrandLogo";
+import { GoogleSignInButton } from "./src/components/GoogleSignInButton";
 import { PasswordInput } from "./src/components/PasswordInput";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CatalogScreen } from "./src/screens/CatalogScreen";
@@ -97,11 +106,14 @@ function AppContent() {
   const [ordersSeenAt, setOrdersSeenAt] = useState(() => new Date().toISOString());
   const [ordersHasUpdates, setOrdersHasUpdates] = useState(false);
   const [ordersRefreshPending, setOrdersRefreshPending] = useState(false);
-  const [supportSeenAt, setSupportSeenAt] = useState(() => new Date().toISOString());
-  const [supportHasUpdates, setSupportHasUpdates] = useState(false);
   const [supportRefreshPending, setSupportRefreshPending] = useState(false);
   const [catalogSearchDraft, setCatalogSearchDraft] = useState("");
   const [catalogSearchApplied, setCatalogSearchApplied] = useState("");
+  const [catalogFilter, setCatalogFilter] = useState<CatalogFilterApplied>(
+    EMPTY_CATALOG_FILTER,
+  );
+  const [catalogFilterOpen, setCatalogFilterOpen] = useState(false);
+  const [categories, setCategories] = useState<CategoryOptionPublic[]>([]);
   const [profilePending, setProfilePending] = useState(false);
   const [profileError, setProfileError] = useState("");
 
@@ -149,6 +161,9 @@ function AppContent() {
           caught instanceof Error ? caught.message : "Не удалось загрузить каталог",
         );
       });
+    fetchCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
   }, [isLoggedIn, mainTab, supportOpen]);
 
   useEffect(() => {
@@ -229,44 +244,8 @@ function AppContent() {
             ? caught.message
             : "Не удалось загрузить обращения",
         );
-      })
-      .finally(() => {
-        void fetchSupportTicketUpdates(null)
-          .then((check) => {
-            setSupportSeenAt(check.latestAt ?? new Date().toISOString());
-            setSupportHasUpdates(false);
-          })
-          .catch(() => undefined);
       });
   }, [isLoggedIn, supportOpen]);
-
-  useEffect(() => {
-    if (!isLoggedIn || !supportOpen) {
-      return;
-    }
-    let cancelled = false;
-
-    async function poll() {
-      try {
-        const check = await fetchSupportTicketUpdates(supportSeenAt);
-        if (!cancelled && check.hasUpdates) {
-          setSupportHasUpdates(true);
-        }
-      } catch {
-        // тихо игнорируем сбои опроса
-      }
-    }
-
-    const interval = setInterval(() => {
-      void poll();
-    }, UPDATES_POLL_INTERVAL_MS);
-    void poll();
-
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [isLoggedIn, supportOpen, supportSeenAt]);
 
   async function onLogin() {
     setError("");
@@ -280,6 +259,28 @@ function AppContent() {
       setSupportOpen(false);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Ошибка входа");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function onGoogleLogin(idToken: string) {
+    setError("");
+    setPending(true);
+    try {
+      const auth = await loginWithGoogleIdToken(idToken);
+      await saveSession(auth);
+      setCustomer(auth.customer);
+      setPassword("");
+      setMainTab("catalog");
+      setSupportOpen(false);
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : "Ошибка входа через Google",
+      );
+      throw caught instanceof Error
+        ? caught
+        : new Error("Ошибка входа через Google");
     } finally {
       setPending(false);
     }
@@ -526,12 +527,9 @@ function AppContent() {
 
   async function onRefreshSupport() {
     setSupportRefreshPending(true);
-    setSupportHasUpdates(false);
     setSupportError("");
     try {
       setTickets(await fetchSupportTickets());
-      const check = await fetchSupportTicketUpdates(null);
-      setSupportSeenAt(check.latestAt ?? new Date().toISOString());
     } catch (caught) {
       setSupportError(
         caught instanceof Error
@@ -543,15 +541,16 @@ function AppContent() {
     }
   }
 
-  async function onCreateSupportTicket(subject: string, body: string) {
+  async function onCreateSupportTicket(
+    subject: string,
+    body: string,
+    imageUrls: string[],
+  ) {
     setSupportPending(true);
     setSupportError("");
     try {
-      await createSupportTicket({ subject, body });
+      await createSupportTicket({ subject, body, imageUrls });
       setTickets(await fetchSupportTickets());
-      const check = await fetchSupportTicketUpdates(null);
-      setSupportSeenAt(check.latestAt ?? new Date().toISOString());
-      setSupportHasUpdates(false);
     } finally {
       setSupportPending(false);
     }
@@ -614,6 +613,7 @@ function AppContent() {
               catalogError={catalogError}
               addingProductId={addingProductId}
               searchApplied=""
+              catalogFilter={EMPTY_CATALOG_FILTER}
               favoriteIds={favoriteIds}
               onAdd={onAdd}
               onToggleFavorite={onToggleFavorite}
@@ -637,8 +637,7 @@ function AppContent() {
               tickets={tickets}
               error={supportError}
               submitPending={supportPending}
-              hasUpdates={supportHasUpdates}
-              refreshPending={supportRefreshPending}
+              refreshing={supportRefreshPending}
               onRefresh={onRefreshSupport}
               onCreate={onCreateSupportTicket}
             />
@@ -649,6 +648,7 @@ function AppContent() {
 
   if (isLoggedIn) {
     return (
+      <>
       <AppShell
         activeTab={mainTab}
         title={getMainTabTitle(mainTab)}
@@ -664,6 +664,11 @@ function AppContent() {
             onChangeText: setCatalogSearchDraft,
             onSubmit: onApplyCatalogSearch,
             onClear: onClearCatalogSearch,
+          },
+          filterActive: isCatalogFilterActive(catalogFilter),
+          onOpenFilter: () => {
+            Keyboard.dismiss();
+            setCatalogFilterOpen(true);
           },
           favoritesActive: favoriteIds.length > 0,
           onOpenMenu: () => {
@@ -690,6 +695,7 @@ function AppContent() {
             catalogError={catalogError}
             addingProductId={addingProductId}
             searchApplied={catalogSearchApplied}
+            catalogFilter={catalogFilter}
             favoriteIds={favoriteIds}
             onAdd={onAdd}
             onToggleFavorite={onToggleFavorite}
@@ -728,6 +734,17 @@ function AppContent() {
           />
         ) : null}
       </AppShell>
+      <CatalogFilterModal
+        visible={catalogFilterOpen}
+        categories={categories}
+        initialFilter={catalogFilter}
+        onClose={() => setCatalogFilterOpen(false)}
+        onApply={(filter) => {
+          setCatalogFilter(filter);
+          setCatalogFilterOpen(false);
+        }}
+      />
+      </>
     );
   }
 
@@ -778,6 +795,15 @@ function AppContent() {
           {pending ? "Подождите…" : screen === "login" ? "Войти" : "Создать аккаунт"}
         </Text>
       </Pressable>
+      {screen === "login" ? (
+        <>
+          <Text style={styles.orDivider}>или</Text>
+          <GoogleSignInButton
+            disabled={pending}
+            onIdToken={onGoogleLogin}
+          />
+        </>
+      ) : null}
       <Pressable
         onPress={() => {
           setError("");
@@ -864,6 +890,13 @@ function createStyles(colors: AppThemeColors) {
       borderRadius: 12,
       paddingVertical: 12,
       alignItems: "center",
+    },
+    orDivider: {
+      textAlign: "center",
+      color: colors.textMuted,
+      marginTop: 4,
+      marginBottom: 0,
+      fontSize: 13,
     },
     buttonText: {
       color: colors.buttonText,

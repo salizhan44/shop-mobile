@@ -1,7 +1,8 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
+import { BOTTOM_TAB_BAR_CONTENT_INSET } from "../components/BottomTabBar";
 import type { CartScreenProps } from "./cart-screen.shared";
 
 export function CartScreen(props: CartScreenProps) {
@@ -28,9 +29,17 @@ export function CartScreen(props: CartScreenProps) {
           props.cart.items.map((item) => (
             <View key={item.id} style={styles.card}>
               <View style={styles.cardTop}>
-                <View style={styles.placeholder}>
-                  <Text style={styles.placeholderText}>▦</Text>
-                </View>
+                {item.imageUrl ? (
+                  <Image
+                    source={{ uri: item.imageUrl }}
+                    style={styles.itemImage}
+                    resizeMode="contain"
+                  />
+                ) : (
+                  <View style={styles.itemImageFallback}>
+                    <Text style={styles.placeholderText}>▦</Text>
+                  </View>
+                )}
                 <View style={styles.info}>
                   <Text style={styles.cardTitle}>{item.name}</Text>
                   <Text style={styles.price}>
@@ -96,6 +105,7 @@ function createStyles(colors: AppThemeColors) {
   return StyleSheet.create({
     container: {
       flex: 1,
+      paddingBottom: BOTTOM_TAB_BAR_CONTENT_INSET,
     },
     error: {
       color: colors.error,
@@ -140,15 +150,15 @@ function createStyles(colors: AppThemeColors) {
       flexDirection: "row",
       gap: 12,
     },
-    placeholder: {
-      width: 64,
-      height: 64,
-      borderRadius: 12,
-      backgroundColor: colors.screenBackground,
+    itemImage: {
+      width: 74,
+      height: 74,
+    },
+    itemImageFallback: {
+      width: 74,
+      height: 74,
       alignItems: "center",
       justifyContent: "center",
-      borderWidth: 1,
-      borderColor: colors.border,
     },
     placeholderText: {
       fontSize: 24,

@@ -7,6 +7,7 @@ import {
   orderStatusLabel,
 } from "../lib/orders-format.shared";
 import type { OrdersScreenProps } from "./orders-screen.shared";
+import { BOTTOM_TAB_BAR_CONTENT_INSET } from "../components/BottomTabBar";
 
 export function OrdersScreen(props: OrdersScreenProps) {
   const { colors } = useAppTheme();
@@ -86,7 +87,7 @@ function createStyles(colors: AppThemeColors) {
     content: {
       flexGrow: 1,
       padding: 12,
-      paddingBottom: 24,
+      paddingBottom: BOTTOM_TAB_BAR_CONTENT_INSET,
       gap: 10,
     },
     error: {

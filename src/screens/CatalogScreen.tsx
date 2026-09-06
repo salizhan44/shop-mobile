@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
+  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -8,13 +9,14 @@ import {
   Text,
   View,
 } from "react-native";
-import { filterProductsBySearch } from "../lib/catalog-search.shared";
+import { filterProductsByCatalog, isCatalogFilterActive } from "../lib/catalog-search.shared";
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import type { ProductPublic } from "../lib/api";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import { HeartIcon } from "../components/HeartIcon";
 import { CatalogPromoSlider } from "../components/CatalogPromoSlider";
+import { BOTTOM_TAB_BAR_CONTENT_INSET } from "../components/BottomTabBar";
 import type { CatalogScreenProps } from "./catalog-screen.shared";
 
 const GRID_PADDING = 8;
@@ -31,8 +33,13 @@ export function CatalogScreen(props: CatalogScreenProps) {
   );
 
   const visibleProducts = useMemo(
-    () => filterProductsBySearch(props.products, props.searchApplied),
-    [props.products, props.searchApplied],
+    () =>
+      filterProductsByCatalog(
+        props.products,
+        props.searchApplied,
+        props.catalogFilter,
+      ),
+    [props.products, props.searchApplied, props.catalogFilter],
   );
 
   useEffect(() => {
@@ -49,7 +56,8 @@ export function CatalogScreen(props: CatalogScreenProps) {
     if (
       fresh.name !== selectedProduct.name ||
       fresh.description !== selectedProduct.description ||
-      fresh.priceCents !== selectedProduct.priceCents
+      fresh.priceCents !== selectedProduct.priceCents ||
+      fresh.imageUrl !== selectedProduct.imageUrl
     ) {
       setSelectedProduct(fresh);
     }
@@ -82,7 +90,15 @@ export function CatalogScreen(props: CatalogScreenProps) {
       {selectedProduct ? (
         <View style={styles.detail}>
           <View style={styles.hero}>
-            <Text style={styles.heroPlaceholder}>▦</Text>
+            {selectedProduct.imageUrl ? (
+              <Image
+                source={{ uri: selectedProduct.imageUrl }}
+                style={styles.heroImage}
+                resizeMode="contain"
+              />
+            ) : (
+              <Text style={styles.heroPlaceholder}>▦</Text>
+            )}
             <Pressable
               onPress={closeProduct}
               style={styles.backButton}
@@ -132,8 +148,9 @@ export function CatalogScreen(props: CatalogScreenProps) {
 
       {visibleProducts.length === 0 && !props.catalogError ? (
         <Text style={styles.muted}>
-          {props.searchApplied.trim().length > 0
-            ? "Ничего не найдено. Измените запрос или сбросьте поиск."
+          {props.searchApplied.trim().length > 0 ||
+          isCatalogFilterActive(props.catalogFilter)
+            ? "Ничего не найдено. Измените запрос, фильтр или сбросьте поиск."
             : "Товаров пока нет. Их добавят на сайте."}
         </Text>
       ) : (
@@ -152,7 +169,15 @@ export function CatalogScreen(props: CatalogScreenProps) {
                 ]}
               >
                 <View style={styles.imagePlaceholder}>
-                  <Text style={styles.imagePlaceholderText}>▦</Text>
+                  {product.imageUrl ? (
+                    <Image
+                      source={{ uri: product.imageUrl }}
+                      style={styles.cardImage}
+                      resizeMode="contain"
+                    />
+                  ) : (
+                    <Text style={styles.imagePlaceholderText}>▦</Text>
+                  )}
                 </View>
                 <Text style={styles.cardTitle} numberOfLines={2}>
                   {product.name}
@@ -209,7 +234,7 @@ function createStyles(colors: AppThemeColors) {
     },
     content: {
       paddingTop: 12,
-      paddingBottom: 24,
+      paddingBottom: BOTTOM_TAB_BAR_CONTENT_INSET,
     },
     detail: {
       marginBottom: 8,
@@ -220,6 +245,11 @@ function createStyles(colors: AppThemeColors) {
       backgroundColor: "#FFFFFF",
       alignItems: "center",
       justifyContent: "center",
+      overflow: "hidden",
+    },
+    heroImage: {
+      width: "69%",
+      height: "69%",
     },
     heroPlaceholder: {
       fontSize: 64,
@@ -331,6 +361,11 @@ function createStyles(colors: AppThemeColors) {
       alignItems: "center",
       justifyContent: "center",
       marginBottom: 8,
+      overflow: "hidden",
+    },
+    cardImage: {
+      width: "69%",
+      height: "69%",
     },
     imagePlaceholderText: {
       fontSize: 32,

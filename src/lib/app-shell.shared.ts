@@ -12,6 +12,8 @@ export type CatalogChromeProps = {
   searchBar: CatalogSearchBarProps;
   /** По умолчанию true; AppShell выключает вне каталога. */
   showSearch?: boolean;
+  filterActive?: boolean;
+  onOpenFilter?: () => void;
   favoritesActive: boolean;
   onOpenMenu: () => void;
   onOpenFavorites: () => void;

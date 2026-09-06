@@ -15,6 +15,7 @@ import { customerInitials } from "../lib/catalog-search.shared";
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import type { ProfileScreenProps } from "./profile-screen.shared";
+import { BOTTOM_TAB_BAR_CONTENT_INSET } from "../components/BottomTabBar";
 
 /** Запас под строку подсказок над клавиатурой. */
 const KEYBOARD_SUGGESTIONS_EXTRA = 52;
@@ -174,7 +175,7 @@ export function ProfileScreen(props: ProfileScreenProps) {
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
-        { paddingBottom: 32 + keyboardPad },
+        { paddingBottom: BOTTOM_TAB_BAR_CONTENT_INSET + keyboardPad },
       ]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"

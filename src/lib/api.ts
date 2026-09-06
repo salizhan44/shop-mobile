@@ -30,6 +30,9 @@ export type ProductPublic = {
   name: string;
   description: string;
   priceCents: number;
+  imageUrl: string;
+  categoryId: string | null;
+  subcategoryId: string | null;
 };
 
 export type ApiErrorBody = {
@@ -146,6 +149,25 @@ export async function loginCustomer(input: {
   return normalizeAuthSuccess(data);
 }
 
+export async function loginWithGoogleIdToken(
+  idToken: string,
+): Promise<CustomerAuthSuccess> {
+  const response = await fetch(`${API_URL}/api/auth/customer/google`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    const message =
+      data && typeof data === "object" && "error" in data
+        ? String((data as ApiErrorBody).error)
+        : "Не удалось войти через Google";
+    throw new Error(message);
+  }
+  return normalizeAuthSuccess(data);
+}
+
 function normalizeAuthSuccess(data: unknown): CustomerAuthSuccess {
   if (!data || typeof data !== "object") {
     throw new Error("Некорректный ответ сервера");
@@ -181,7 +203,80 @@ export async function fetchProducts(): Promise<ProductPublic[]> {
   ) {
     return [];
   }
-  return (data as { products: ProductPublic[] }).products;
+  return (data as { products: unknown[] }).products.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+    const body = item as Record<string, unknown>;
+    if (
+      typeof body.id !== "string" ||
+      typeof body.name !== "string" ||
+      typeof body.description !== "string" ||
+      typeof body.priceCents !== "number"
+    ) {
+      return [];
+    }
+    return [
+      {
+        id: body.id,
+        name: body.name,
+        description: body.description,
+        priceCents: body.priceCents,
+        imageUrl: resolveMediaUrl(
+          typeof body.imageUrl === "string" ? body.imageUrl : "",
+        ),
+        categoryId:
+          typeof body.categoryId === "string" ? body.categoryId : null,
+        subcategoryId:
+          typeof body.subcategoryId === "string"
+            ? body.subcategoryId
+            : null,
+      },
+    ];
+  });
+}
+
+export type CategoryOptionPublic = {
+  id: string;
+  name: string;
+  subcategories: Array<{ id: string; name: string }>;
+};
+
+export async function fetchCategories(): Promise<CategoryOptionPublic[]> {
+  const response = await fetch(`${API_URL}/api/categories`);
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить категории");
+  }
+  if (
+    typeof data !== "object" ||
+    data === null ||
+    !Array.isArray((data as { categories?: unknown }).categories)
+  ) {
+    return [];
+  }
+  return (data as { categories: unknown[] }).categories.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+    const body = item as Record<string, unknown>;
+    if (typeof body.id !== "string" || typeof body.name !== "string") {
+      return [];
+    }
+    const subcategories = Array.isArray(body.subcategories)
+      ? body.subcategories.flatMap((sub) => {
+          if (!sub || typeof sub !== "object") {
+            return [];
+          }
+          const row = sub as Record<string, unknown>;
+          if (typeof row.id !== "string" || typeof row.name !== "string") {
+            return [];
+          }
+          return [{ id: row.id, name: row.name }];
+        })
+      : [];
+    return [{ id: body.id, name: body.name, subcategories }];
+  });
 }
 
 export type CartLinePublic = {
@@ -190,6 +285,7 @@ export type CartLinePublic = {
   name: string;
   description: string;
   priceCents: number;
+  imageUrl: string;
   quantity: number;
   lineTotalCents: number;
 };
@@ -205,6 +301,18 @@ function isCartPublic(value: unknown): value is CartPublic {
   }
   const body = value as { items?: unknown; totalCents?: unknown };
   return Array.isArray(body.items) && typeof body.totalCents === "number";
+}
+
+function normalizeCart(data: CartPublic): CartPublic {
+  return {
+    totalCents: data.totalCents,
+    items: data.items.map((item) => ({
+      ...item,
+      imageUrl: resolveMediaUrl(
+        typeof item.imageUrl === "string" ? item.imageUrl : "",
+      ),
+    })),
+  };
 }
 
 function errorMessage(data: unknown, fallback: string): string {
@@ -282,7 +390,7 @@ async function readCart(response: Response): Promise<CartPublic> {
   if (!isCartPublic(data)) {
     throw new Error("Некорректный ответ корзины");
   }
-  return data;
+  return normalizeCart(data);
 }
 
 export async function fetchCart(): Promise<CartPublic> {
@@ -409,6 +517,7 @@ export type SupportTicketPublic = {
   id: string;
   subject: string;
   body: string;
+  imageUrls: string[];
   status: "OPEN" | "CLOSED";
   staffReply: string | null;
   createdAt: string;
@@ -425,14 +534,33 @@ function isSupportTicketPublic(value: unknown): value is SupportTicketPublic {
     body?: unknown;
     status?: unknown;
     createdAt?: unknown;
+    imageUrls?: unknown;
   };
-  return (
-    typeof body.id === "string" &&
-    typeof body.subject === "string" &&
-    typeof body.body === "string" &&
-    typeof body.status === "string" &&
-    typeof body.createdAt === "string"
-  );
+  if (
+    typeof body.id !== "string" ||
+    typeof body.subject !== "string" ||
+    typeof body.body !== "string" ||
+    typeof body.status !== "string" ||
+    typeof body.createdAt !== "string"
+  ) {
+    return false;
+  }
+  if (body.imageUrls !== undefined) {
+    if (
+      !Array.isArray(body.imageUrls) ||
+      !body.imageUrls.every((item) => typeof item === "string")
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function normalizeSupportTicket(ticket: SupportTicketPublic): SupportTicketPublic {
+  return {
+    ...ticket,
+    imageUrls: (ticket.imageUrls ?? []).map((url) => resolveMediaUrl(url)),
+  };
 }
 
 function isSupportTicketsList(
@@ -457,12 +585,13 @@ export async function fetchSupportTickets(): Promise<SupportTicketPublic[]> {
   if (!isSupportTicketsList(data)) {
     throw new Error("Некорректный ответ обращений");
   }
-  return data.tickets;
+  return data.tickets.map((ticket) => normalizeSupportTicket(ticket));
 }
 
 export async function createSupportTicket(input: {
   subject: string;
   body: string;
+  imageUrls?: string[];
 }): Promise<SupportTicketPublic> {
   const response = await authorizedFetch("/api/support/tickets", {
     method: "POST",
@@ -475,7 +604,7 @@ export async function createSupportTicket(input: {
   if (!isSupportTicketPublic(data)) {
     throw new Error("Некорректный ответ обращения");
   }
-  return data;
+  return normalizeSupportTicket(data);
 }
 
 async function readUpdatesCheck(response: Response): Promise<UpdatesCheckPublic> {

@@ -6,7 +6,9 @@ import { mainTabLabel } from "../lib/main-tab.shared";
 import type { AppShellProps } from "../lib/app-shell.shared";
 import { AccountMenuModal } from "./AccountMenuModal";
 import { AppHeader } from "./AppHeader";
-import { BottomTabBar } from "./BottomTabBar";
+import {
+  BottomTabBar,
+} from "./BottomTabBar";
 
 export function AppShell(props: AppShellProps) {
   const { colors, mode } = useAppTheme();

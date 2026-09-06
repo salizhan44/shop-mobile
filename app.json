@@ -4,6 +4,7 @@
     "slug": "shop-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
+    "scheme": "shop",
     "backgroundColor": "#EAF3F9",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -15,6 +16,6 @@
       "usesCleartextTraffic": true,
       "softwareKeyboardLayoutMode": "resize"
     },
-    "plugins": ["expo-secure-store"]
+    "plugins": ["expo-secure-store", "expo-web-browser"]
   }
 }
