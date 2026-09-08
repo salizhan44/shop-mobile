@@ -1,6 +1,8 @@
 node_modules/
 .expo/
 dist/
+android/
+ios/
 *.jks
 *.p8
 *.p12
@@ -11,3 +13,5 @@ web-build/
 .env
 .env*.local
 npm-debug.log*
+google-services.json
+GoogleService-Info.plist

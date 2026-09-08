@@ -33,8 +33,8 @@ export function AppHeader(props: AppHeaderProps) {
   }
 
   if (chrome) {
-    const topPad = insets.top + 6.4;
-    const bottomPad = chrome.showSearch ? 9.6 : 4;
+    const topPad = insets.top + 6.4 * 0.6;
+    const bottomPad = chrome.showSearch ? 9.6 * 0.6 : 4 * 0.6;
     return (
       <View
         style={[
@@ -110,7 +110,7 @@ export function AppHeader(props: AppHeaderProps) {
   }
 
   return (
-    <View style={[styles.header, { paddingTop: insets.top + 6.4 }]}>
+    <View style={[styles.header, { paddingTop: insets.top + 6.4 * 0.6 }]}>
       <View style={styles.left}>
         {props.onBack ? (
           <Pressable onPress={goBack} style={styles.backButton}>
@@ -158,7 +158,7 @@ function createStyles(colors: AppThemeColors) {
       alignItems: "center",
       justifyContent: "space-between",
       minHeight: Math.round(HEADER_LOGO_HEIGHT + 8),
-      marginBottom: 3.4,
+      marginBottom: 3.4 * 0.6,
     },
     searchRow: {
       flexDirection: "row",
@@ -184,12 +184,14 @@ function createStyles(colors: AppThemeColors) {
       borderColor: colors.buttonBackground,
     },
     filterButtonText: {
-      fontSize: 14,
-      fontWeight: "700",
-      color: colors.textPrimary,
+      fontSize: 15,
+      fontWeight: "400",
+      color: colors.textMuted,
     },
     filterButtonTextActive: {
       color: colors.buttonText,
+      fontSize: 15,
+      fontWeight: "400",
     },
     logoCenter: {
       ...StyleSheet.absoluteFillObject,

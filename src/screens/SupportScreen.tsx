@@ -18,6 +18,7 @@ import {
   supportTicketStatusLabel,
 } from "../lib/support-format.shared";
 import type { SupportScreenProps } from "./support-screen.shared";
+import { CARD_SHADOW } from "../lib/card-shadow.shared";
 
 const MAX_SUPPORT_PHOTOS = 5;
 const MAX_SUPPORT_PHOTO_DATA_URL = 2_000_000;
@@ -410,6 +411,7 @@ function createStyles(colors: AppThemeColors) {
       borderWidth: 1,
       borderColor: colors.cardBorder,
       gap: 4,
+      ...CARD_SHADOW,
     },
     cardTitle: {
       fontWeight: "700",

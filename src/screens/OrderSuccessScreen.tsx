@@ -8,6 +8,7 @@ import {
   orderStatusLabel,
 } from "../lib/orders-format.shared";
 import type { OrderSuccessScreenProps } from "./order-success-screen.shared";
+import { CARD_SHADOW } from "../lib/card-shadow.shared";
 
 export function OrderSuccessScreen(props: OrderSuccessScreenProps) {
   const { colors, mode } = useAppTheme();
@@ -44,6 +45,14 @@ export function OrderSuccessScreen(props: OrderSuccessScreenProps) {
             </Text>
           </View>
         ))}
+        {props.order.promoCode ? (
+          <Text style={styles.muted}>
+            Промокод {props.order.promoCode}
+            {props.order.discountCents > 0
+              ? ` · −${formatPriceSomLabel(props.order.discountCents)}`
+              : ""}
+          </Text>
+        ) : null}
       </ScrollView>
       <View style={[styles.footer, { paddingBottom: 16 + insets.bottom }]}>
         <Text style={styles.total}>
@@ -109,6 +118,7 @@ function createStyles(colors: AppThemeColors) {
       backgroundColor: colors.cardBackground,
       borderWidth: 1,
       borderColor: colors.cardBorder,
+      ...CARD_SHADOW,
     },
     cardTitle: {
       fontWeight: "600",

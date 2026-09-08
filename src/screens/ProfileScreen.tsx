@@ -15,7 +15,8 @@ import { customerInitials } from "../lib/catalog-search.shared";
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import type { ProfileScreenProps } from "./profile-screen.shared";
-import { BOTTOM_TAB_BAR_CONTENT_INSET } from "../components/BottomTabBar";
+import { useBottomTabBarContentInset } from "../components/BottomTabBar";
+import { CARD_SHADOW } from "../lib/card-shadow.shared";
 
 /** Запас под строку подсказок над клавиатурой. */
 const KEYBOARD_SUGGESTIONS_EXTRA = 52;
@@ -37,6 +38,7 @@ function friendlyError(caught: unknown, fallback: string): string {
 export function ProfileScreen(props: ProfileScreenProps) {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
+  const tabBarInset = useBottomTabBarContentInset();
   const scrollRef = useRef<ScrollView>(null);
   const scrollYRef = useRef(0);
   const nameWrapRef = useRef<View>(null);
@@ -175,7 +177,7 @@ export function ProfileScreen(props: ProfileScreenProps) {
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
-        { paddingBottom: BOTTOM_TAB_BAR_CONTENT_INSET + keyboardPad },
+        { paddingBottom: tabBarInset + keyboardPad },
       ]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
@@ -240,9 +242,6 @@ export function ProfileScreen(props: ProfileScreenProps) {
         </View>
         <View ref={addressWrapRef} collapsable={false} style={styles.fieldBlock}>
           <Text style={styles.label}>Домашний адрес</Text>
-          <Text style={styles.hint}>
-            Подставится при оформлении заказа — там его можно изменить.
-          </Text>
           <TextInput
             value={address}
             onChangeText={onChangeAddress}
@@ -334,6 +333,7 @@ function createStyles(colors: AppThemeColors) {
       borderWidth: 1,
       borderColor: colors.cardBorder,
       gap: 10,
+      ...CARD_SHADOW,
     },
     label: {
       fontSize: 15,
@@ -342,11 +342,6 @@ function createStyles(colors: AppThemeColors) {
     },
     fieldBlock: {
       gap: 8,
-    },
-    hint: {
-      fontSize: 13,
-      color: colors.textMuted,
-      lineHeight: 18,
     },
     input: {
       borderWidth: 1,

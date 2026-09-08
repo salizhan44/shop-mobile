@@ -9,24 +9,28 @@ import {
   Text,
   View,
 } from "react-native";
-import { filterProductsByCatalog, isCatalogFilterActive } from "../lib/catalog-search.shared";
+import { filterProductsByCatalog, isCatalogFilterActive, CATALOG_QUICK_CATEGORY_NAMES, resolveQuickCategoryTargetId, isMissingCategorySentinel } from "../lib/catalog-search.shared";
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import type { ProductPublic } from "../lib/api";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
+import { CARD_SHADOW } from "../lib/card-shadow.shared";
 import { HeartIcon } from "../components/HeartIcon";
 import { CatalogPromoSlider } from "../components/CatalogPromoSlider";
-import { BOTTOM_TAB_BAR_CONTENT_INSET } from "../components/BottomTabBar";
+import { BOTTOM_TAB_BAR_CONTENT_INSET, useBottomTabBarContentInset } from "../components/BottomTabBar";
 import type { CatalogScreenProps } from "./catalog-screen.shared";
 
-const GRID_PADDING = 8;
-const GRID_GAP = 9.6;
+const GRID_PADDING = 8 * 1.5;
+const GRID_GAP = 9.6 * 1.5;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_WIDTH = (SCREEN_WIDTH - GRID_PADDING * 2 - GRID_GAP) / 2;
+const CARD_RADIUS = 14 * 1.15;
+const CARD_IMAGE_RADIUS = 9.8 * 1.15;
 
 export function CatalogScreen(props: CatalogScreenProps) {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
+  const tabBarInset = useBottomTabBarContentInset();
   const scrollRef = useRef<ScrollView>(null);
   const [selectedProduct, setSelectedProduct] = useState<ProductPublic | null>(
     null,
@@ -77,12 +81,15 @@ export function CatalogScreen(props: CatalogScreenProps) {
 
   const selectedAdding =
     selectedProduct !== null && props.addingProductId === selectedProduct.id;
+  const selectedFavorite =
+    selectedProduct !== null &&
+    props.favoriteIds.includes(selectedProduct.id);
 
   return (
     <ScrollView
       ref={scrollRef}
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: tabBarInset }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       onScrollBeginDrag={Keyboard.dismiss}
@@ -115,6 +122,18 @@ export function CatalogScreen(props: CatalogScreenProps) {
                 {formatPriceSomLabel(selectedProduct.priceCents)}
               </Text>
               <Pressable
+                onPress={() => props.onToggleFavorite(selectedProduct.id)}
+                style={styles.detailFavoriteButton}
+                accessibilityLabel="Избранное"
+                hitSlop={8}
+              >
+                <HeartIcon
+                  filled={selectedFavorite}
+                  color={selectedFavorite ? colors.accent : colors.iconSoft}
+                  size={24}
+                />
+              </Pressable>
+              <Pressable
                 onPress={() => props.onAdd(selectedProduct.id)}
                 disabled={selectedAdding}
                 style={({ pressed }) => [
@@ -138,9 +157,66 @@ export function CatalogScreen(props: CatalogScreenProps) {
           </View>
           <Text style={styles.catalogSection}>Каталог</Text>
         </View>
-      ) : (
+      ) : props.showPromoSlider === false ? null : (
         <CatalogPromoSlider />
       )}
+
+      {props.onSelectCategoryId ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.categoryTabs}
+          contentContainerStyle={styles.categoryTabsContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Pressable
+            onPress={() => props.onSelectCategoryId?.(null)}
+            style={[
+              styles.categoryChip,
+              props.catalogFilter.categoryId === null
+                ? styles.categoryChipActive
+                : null,
+            ]}
+          >
+            <Text
+              style={[
+                styles.categoryChipText,
+                props.catalogFilter.categoryId === null
+                  ? styles.categoryChipTextActive
+                  : null,
+              ]}
+            >
+              ВСЕ
+            </Text>
+          </Pressable>
+          {CATALOG_QUICK_CATEGORY_NAMES.map((name) => {
+            const targetId = resolveQuickCategoryTargetId(
+              props.categories ?? [],
+              name,
+            );
+            const active = props.catalogFilter.categoryId === targetId;
+            return (
+              <Pressable
+                key={name}
+                onPress={() => props.onSelectCategoryId?.(targetId)}
+                style={[
+                  styles.categoryChip,
+                  active ? styles.categoryChipActive : null,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    active ? styles.categoryChipTextActive : null,
+                  ]}
+                >
+                  {name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
 
       {props.catalogError ? (
         <Text style={styles.error}>{props.catalogError}</Text>
@@ -149,7 +225,8 @@ export function CatalogScreen(props: CatalogScreenProps) {
       {visibleProducts.length === 0 && !props.catalogError ? (
         <Text style={styles.muted}>
           {props.searchApplied.trim().length > 0 ||
-          isCatalogFilterActive(props.catalogFilter)
+          isCatalogFilterActive(props.catalogFilter) ||
+          isMissingCategorySentinel(props.catalogFilter.categoryId)
             ? "Ничего не найдено. Измените запрос, фильтр или сбросьте поиск."
             : "Товаров пока нет. Их добавят на сайте."}
         </Text>
@@ -236,6 +313,37 @@ function createStyles(colors: AppThemeColors) {
       paddingTop: 12,
       paddingBottom: BOTTOM_TAB_BAR_CONTENT_INSET,
     },
+    categoryTabs: {
+      flexGrow: 0,
+      marginTop: 8 * 0.2,
+      marginBottom: 10,
+    },
+    categoryTabsContent: {
+      paddingHorizontal: GRID_PADDING,
+      gap: 8,
+      alignItems: "center",
+    },
+    categoryChip: {
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: colors.border,
+      backgroundColor: "transparent",
+    },
+    categoryChipActive: {
+      backgroundColor: "transparent",
+      borderColor: colors.accent,
+    },
+    categoryChipText: {
+      fontSize: 13,
+      fontWeight: "700",
+      color: colors.textPrimary,
+      letterSpacing: 0.3,
+    },
+    categoryChipTextActive: {
+      color: colors.accent,
+    },
     detail: {
       marginBottom: 8,
     },
@@ -298,6 +406,12 @@ function createStyles(colors: AppThemeColors) {
       fontWeight: "700",
       color: colors.accent,
     },
+    detailFavoriteButton: {
+      width: 44,
+      height: 44,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     detailAddButton: {
       width: 44,
       height: 44,
@@ -343,9 +457,10 @@ function createStyles(colors: AppThemeColors) {
     },
     card: {
       width: CARD_WIDTH,
-      borderRadius: 14,
+      borderRadius: CARD_RADIUS,
       padding: 8,
       backgroundColor: colors.cardBackground,
+      ...CARD_SHADOW,
     },
     cardOpen: {
       opacity: 0.96,
@@ -356,7 +471,7 @@ function createStyles(colors: AppThemeColors) {
     imagePlaceholder: {
       width: "100%",
       aspectRatio: 1,
-      borderRadius: 9.8,
+      borderRadius: CARD_IMAGE_RADIUS,
       backgroundColor: "#FFFFFF",
       alignItems: "center",
       justifyContent: "center",

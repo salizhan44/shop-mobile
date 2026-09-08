@@ -5,6 +5,7 @@ import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import { MAIN_TABS, mainTabIcon, mainTabLabel } from "../lib/main-tab.shared";
 import type { BottomTabBarProps } from "../lib/app-shell.shared";
+import { CartIcon } from "./CartIcon";
 import { ProfileIcon } from "./ProfileIcon";
 
 const ACTIVE_CIRCLE = 48;
@@ -16,6 +17,16 @@ const SHELL_HEIGHT = 64;
 /** Отступ контента, чтобы список не прятался под меню. */
 export const BOTTOM_TAB_BAR_CONTENT_INSET =
   ACTIVE_LIFT + SHELL_HEIGHT + 24;
+
+/** На Android учитывает системную панель: иначе меню перекрывает низ списка. iOS — прежняя константа. */
+export function useBottomTabBarContentInset(): number {
+  const insets = useSafeAreaInsets();
+  if (Platform.OS !== "android") {
+    return BOTTOM_TAB_BAR_CONTENT_INSET;
+  }
+  const bottomPad = Math.max(insets.bottom, 10);
+  return ACTIVE_LIFT + SHELL_HEIGHT + bottomPad + 24;
+}
 
 export function BottomTabBar(props: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
@@ -67,6 +78,8 @@ export function BottomTabBar(props: BottomTabBarProps) {
                       <View style={styles.activeBubble}>
                         {tab === "profile" ? (
                           <ProfileIcon color={colors.buttonText} size={22} />
+                        ) : tab === "cart" ? (
+                          <CartIcon color={colors.buttonText} size={22} />
                         ) : (
                           <Text style={styles.iconActive}>
                             {mainTabIcon(tab)}
@@ -81,6 +94,8 @@ export function BottomTabBar(props: BottomTabBarProps) {
                     <View style={styles.inactiveIconWrap}>
                       {tab === "profile" ? (
                         <ProfileIcon color={colors.tabInactive} size={20} />
+                      ) : tab === "cart" ? (
+                        <CartIcon color={colors.tabInactive} size={20} />
                       ) : (
                         <Text style={styles.iconInactive}>
                           {mainTabIcon(tab)}

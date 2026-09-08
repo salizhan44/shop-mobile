@@ -39,23 +39,72 @@ export type ApiErrorBody = {
   error: string;
 };
 
+function stripTrailingSlash(url: string): string {
+  return url.replace(/\/$/, "");
+}
+
+function isLoopbackApiUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1";
+  } catch {
+    return true;
+  }
+}
+
+function isPrivateLanHost(host: string): boolean {
+  return (
+    /^10\.\d+\.\d+\.\d+$/.test(host) ||
+    /^192\.168\.\d+\.\d+$/.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+$/.test(host)
+  );
+}
+
+function isMetroTunnelHost(host: string): boolean {
+  const lower = host.toLowerCase();
+  return (
+    lower.endsWith(".exp.direct") ||
+    lower.endsWith(".exp.host") ||
+    lower.includes("ngrok") ||
+    lower.endsWith(".expo.dev")
+  );
+}
+
 function resolveApiUrl(): string {
-  const fromEnv = process.env.EXPO_PUBLIC_API_URL;
+  const fromEnv = (process.env.EXPO_PUBLIC_API_URL ?? "").trim();
   if (Platform.OS === "web") {
-    return fromEnv && fromEnv.length > 0 ? fromEnv : "http://localhost:3000";
+    return fromEnv.length > 0
+      ? stripTrailingSlash(fromEnv)
+      : "http://localhost:3000";
+  }
+  if (fromEnv.length > 0 && !isLoopbackApiUrl(fromEnv)) {
+    return stripTrailingSlash(fromEnv);
   }
   const hostUri = Constants.expoConfig?.hostUri;
   const host = hostUri?.split(":")[0];
-  if (host && host !== "localhost" && host !== "127.0.0.1") {
+  if (host && isPrivateLanHost(host) && !isMetroTunnelHost(host)) {
     return `http://${host}:3000`;
   }
-  if (fromEnv && fromEnv.length > 0) {
-    return fromEnv;
+  if (fromEnv.length > 0) {
+    return stripTrailingSlash(fromEnv);
   }
   return "http://localhost:3000";
 }
 
 const API_URL = resolveApiUrl();
+
+async function publicApiFetch(
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetch(`${API_URL}${path}`, init);
+  } catch {
+    throw new Error(
+      "Нет связи с сервером. Телефон и компьютер должны быть в одной Wi‑Fi сети.",
+    );
+  }
+}
 
 /** Абсолютный URL для аватаров и прочих /uploads с API. */
 export function resolveMediaUrl(url: string): string {
@@ -113,7 +162,7 @@ export async function registerCustomer(input: {
   email: string;
   password: string;
 }): Promise<CustomerAuthSuccess> {
-  const response = await fetch(`${API_URL}/api/auth/customer/register`, {
+  const response = await publicApiFetch("/api/auth/customer/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -133,7 +182,7 @@ export async function loginCustomer(input: {
   email: string;
   password: string;
 }): Promise<CustomerAuthSuccess> {
-  const response = await fetch(`${API_URL}/api/auth/customer/login`, {
+  const response = await publicApiFetch("/api/auth/customer/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -152,7 +201,7 @@ export async function loginCustomer(input: {
 export async function loginWithGoogleIdToken(
   idToken: string,
 ): Promise<CustomerAuthSuccess> {
-  const response = await fetch(`${API_URL}/api/auth/customer/google`, {
+  const response = await publicApiFetch("/api/auth/customer/google", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idToken }),
@@ -439,6 +488,8 @@ export type OrderPublic = {
   id: string;
   status: "PENDING" | "CONFIRMED" | "REJECTED";
   totalCents: number;
+  discountCents: number;
+  promoCode: string;
   phone: string;
   address: string;
   comment: string | null;
@@ -455,15 +506,22 @@ function isOrderPublic(value: unknown): value is OrderPublic {
     id?: unknown;
     status?: unknown;
     totalCents?: unknown;
+    discountCents?: unknown;
+    promoCode?: unknown;
     phone?: unknown;
     address?: unknown;
     items?: unknown;
     createdAt?: unknown;
   };
+  const discountCents =
+    typeof body.discountCents === "number" ? body.discountCents : 0;
+  const promoCode = typeof body.promoCode === "string" ? body.promoCode : "";
   return (
     typeof body.id === "string" &&
     typeof body.status === "string" &&
     typeof body.totalCents === "number" &&
+    discountCents >= 0 &&
+    typeof promoCode === "string" &&
     typeof body.phone === "string" &&
     typeof body.address === "string" &&
     Array.isArray(body.items) &&
@@ -475,6 +533,7 @@ export async function checkoutOrder(input: {
   phone: string;
   address: string;
   comment: string;
+  promoCode?: string;
 }): Promise<OrderPublic> {
   const response = await authorizedFetch("/api/orders", {
     method: "POST",
@@ -486,6 +545,45 @@ export async function checkoutOrder(input: {
   }
   if (!isOrderPublic(data)) {
     throw new Error("Некорректный ответ заказа");
+  }
+  return data;
+}
+
+export type PromoQuotePublic = {
+  code: string;
+  kind: "PERCENT" | "AMOUNT" | "FREE_DELIVERY" | "FREE_PRODUCT";
+  discountCents: number;
+  payableCents: number;
+  giftProductName: string | null;
+  message: string;
+};
+
+function isPromoQuotePublic(value: unknown): value is PromoQuotePublic {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const body = value as Record<string, unknown>;
+  return (
+    typeof body.code === "string" &&
+    typeof body.kind === "string" &&
+    typeof body.discountCents === "number" &&
+    typeof body.payableCents === "number" &&
+    (body.giftProductName === null || typeof body.giftProductName === "string") &&
+    typeof body.message === "string"
+  );
+}
+
+export async function previewPromoCode(code: string): Promise<PromoQuotePublic> {
+  const response = await authorizedFetch("/api/promo/preview", {
+    method: "POST",
+    body: JSON.stringify({ code }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось применить промокод"));
+  }
+  if (!isPromoQuotePublic(data)) {
+    throw new Error("Некорректный ответ промокода");
   }
   return data;
 }
@@ -665,5 +763,19 @@ export async function updateMyProfile(input: {
     throw new Error("Некорректный ответ профиля");
   }
   return customer;
+}
+
+export async function registerPushToken(
+  token: string,
+  platform: "ios" | "android" | "web" | "unknown",
+): Promise<void> {
+  const response = await authorizedFetch("/api/customer/push-token", {
+    method: "POST",
+    body: JSON.stringify({ token, platform }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось сохранить push-токен"));
+  }
 }
 

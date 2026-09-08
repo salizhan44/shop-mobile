@@ -23,6 +23,7 @@ import {
   fetchProducts,
   loginCustomer,
   loginWithGoogleIdToken,
+  previewPromoCode,
   registerCustomer,
   removeCartItem,
   updateCartItemQuantity,
@@ -66,6 +67,7 @@ import { OrdersScreen } from "./src/screens/OrdersScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
 import { SupportScreen } from "./src/screens/SupportScreen";
 import * as ImagePicker from "expo-image-picker";
+import { registerForOrderPushNotifications } from "./src/lib/push-registration";
 
 const emptyCart: CartPublic = { items: [], totalCents: 0 };
 
@@ -146,6 +148,15 @@ function AppContent() {
     fetchCart()
       .then(setCart)
       .catch(() => setCart(emptyCart));
+  }, [isLoggedIn]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      return;
+    }
+    void registerForOrderPushNotifications().catch((error) => {
+      console.warn("[push] register failed", error);
+    });
   }, [isLoggedIn]);
 
   useEffect(() => {
@@ -478,6 +489,7 @@ function AppContent() {
     phone: string;
     address: string;
     comment: string;
+    promoCode: string;
   }) {
     setCheckoutPending(true);
     setCartError("");
@@ -576,6 +588,7 @@ function AppContent() {
           setScreen("login");
           setMainTab("cart");
         }}
+        onPreviewPromo={previewPromoCode}
         onSubmit={onSubmitCheckout}
       />
     );
@@ -615,6 +628,7 @@ function AppContent() {
               searchApplied=""
               catalogFilter={EMPTY_CATALOG_FILTER}
               favoriteIds={favoriteIds}
+              showPromoSlider={false}
               onAdd={onAdd}
               onToggleFavorite={onToggleFavorite}
             />
@@ -697,6 +711,14 @@ function AppContent() {
             searchApplied={catalogSearchApplied}
             catalogFilter={catalogFilter}
             favoriteIds={favoriteIds}
+            categories={categories}
+            onSelectCategoryId={(categoryId) => {
+              setCatalogFilter((prev) => ({
+                ...prev,
+                categoryId,
+                subcategoryId: null,
+              }));
+            }}
             onAdd={onAdd}
             onToggleFavorite={onToggleFavorite}
           />

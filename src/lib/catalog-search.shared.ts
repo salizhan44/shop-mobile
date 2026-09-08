@@ -1,4 +1,4 @@
-import type { ProductPublic } from "./api";
+import type { CategoryOptionPublic, ProductPublic } from "./api";
 
 export function normalizeSearchQuery(query: string): string {
   return query.trim().toLowerCase();
@@ -39,9 +39,56 @@ export const EMPTY_CATALOG_FILTER: CatalogFilterApplied = {
   maxPriceCents: null,
 };
 
-export function isCatalogFilterActive(filter: CatalogFilterApplied): boolean {
+/** Быстрые вкладки категорий под каруселью. */
+export const CATALOG_QUICK_CATEGORY_NAMES = [
+  "МУКА",
+  "МАКАРОНЫ",
+  "ЛАПША",
+] as const;
+
+const MISSING_CATEGORY_PREFIX = "__missing__:";
+
+/** Id-заглушка, если категории ещё нет в API — у каждого имени своя. */
+export function missingCategorySentinel(name: string): string {
+  return `${MISSING_CATEGORY_PREFIX}${name.trim().toLowerCase()}`;
+}
+
+export function isMissingCategorySentinel(categoryId: string | null): boolean {
   return (
-    filter.categoryId !== null ||
+    typeof categoryId === "string" &&
+    categoryId.startsWith(MISSING_CATEGORY_PREFIX)
+  );
+}
+
+export function resolveQuickCategoryTargetId(
+  categories: readonly CategoryOptionPublic[],
+  name: string,
+): string {
+  return findCategoryIdByName(categories, name) ?? missingCategorySentinel(name);
+}
+
+export function findCategoryIdByName(
+  categories: readonly CategoryOptionPublic[],
+  name: string,
+): string | null {
+  const normalized = name.trim().toLowerCase();
+  const exact = categories.find(
+    (category) => category.name.trim() === name.trim(),
+  );
+  if (exact) {
+    return exact.id;
+  }
+  const match = categories.find(
+    (category) => category.name.trim().toLowerCase() === normalized,
+  );
+  return match?.id ?? null;
+}
+
+export function isCatalogFilterActive(filter: CatalogFilterApplied): boolean {
+  const hasRealCategory =
+    filter.categoryId !== null && !isMissingCategorySentinel(filter.categoryId);
+  return (
+    hasRealCategory ||
     filter.subcategoryId !== null ||
     filter.minPriceCents !== null ||
     filter.maxPriceCents !== null

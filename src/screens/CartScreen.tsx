@@ -2,16 +2,18 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
-import { BOTTOM_TAB_BAR_CONTENT_INSET } from "../components/BottomTabBar";
+import { CARD_SHADOW } from "../lib/card-shadow.shared";
+import { BOTTOM_TAB_BAR_CONTENT_INSET, useBottomTabBarContentInset } from "../components/BottomTabBar";
 import type { CartScreenProps } from "./cart-screen.shared";
 
 export function CartScreen(props: CartScreenProps) {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
+  const tabBarInset = useBottomTabBarContentInset();
   const itemCount = props.cart.items.reduce((sum, item) => sum + item.quantity, 0);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingBottom: tabBarInset }]}>
       {props.error ? <Text style={styles.error}>{props.error}</Text> : null}
       <ScrollView
         style={styles.list}
@@ -145,6 +147,7 @@ function createStyles(colors: AppThemeColors) {
       borderWidth: 1,
       borderColor: colors.cardBorder,
       gap: 10,
+      ...CARD_SHADOW,
     },
     cardTop: {
       flexDirection: "row",

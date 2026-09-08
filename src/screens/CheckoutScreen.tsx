@@ -14,7 +14,9 @@ import { AppHeader } from "../components/AppHeader";
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
+import { CARD_SHADOW } from "../lib/card-shadow.shared";
 import type { CheckoutScreenProps } from "./checkout-screen.shared";
+import type { PromoQuotePublic } from "../lib/api";
 
 export function CheckoutScreen(props: CheckoutScreenProps) {
   const { colors, mode } = useAppTheme();
@@ -23,6 +25,9 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState(props.initialAddress ?? "");
   const [comment, setComment] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [promoQuote, setPromoQuote] = useState<PromoQuotePublic | null>(null);
+  const [promoPending, setPromoPending] = useState(false);
   const [formError, setFormError] = useState("");
 
   const itemCount = props.cart.items.reduce(
@@ -30,11 +35,30 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
     0,
   );
 
+  async function onApplyPromo() {
+    Keyboard.dismiss();
+    setFormError("");
+    setPromoPending(true);
+    try {
+      const quote = await props.onPreviewPromo(promoCode);
+      setPromoQuote(quote);
+    } catch (caught) {
+      setPromoQuote(null);
+      setFormError(
+        caught instanceof Error ? caught.message : "Не удалось применить промокод",
+      );
+    } finally {
+      setPromoPending(false);
+    }
+  }
+
+  const payableCents = promoQuote?.payableCents ?? props.cart.totalCents;
+
   async function onSubmit() {
     Keyboard.dismiss();
     setFormError("");
     try {
-      await props.onSubmit({ phone, address, comment });
+      await props.onSubmit({ phone, address, comment, promoCode });
     } catch (caught) {
       setFormError(
         caught instanceof Error ? caught.message : "Не удалось оформить заказ",
@@ -63,12 +87,55 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
             </Text>
           </View>
         ))}
+        {promoQuote?.giftProductName ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>{promoQuote.giftProductName}</Text>
+            <Text style={styles.muted}>Подарок по промокоду</Text>
+          </View>
+        ) : null}
+        {promoQuote && promoQuote.discountCents > 0 ? (
+          <View style={styles.totalRow}>
+            <Text style={styles.totalLabel}>Скидка</Text>
+            <Text style={styles.muted}>
+              −{formatPriceSomLabel(promoQuote.discountCents)}
+            </Text>
+          </View>
+        ) : null}
         <View style={styles.totalRow}>
           <Text style={styles.totalLabel}>Итого ({itemCount} шт.)</Text>
           <Text style={styles.totalValue}>
-            {formatPriceSomLabel(props.cart.totalCents)}
+            {formatPriceSomLabel(payableCents)}
           </Text>
         </View>
+
+        <Text style={styles.sectionTitle}>Промокод</Text>
+        <Text style={styles.label}>Код</Text>
+        <TextInput
+          value={promoCode}
+          onChangeText={(value) => {
+            setPromoCode(value);
+            setPromoQuote(null);
+          }}
+          placeholder="Необязательно"
+          autoCapitalize="characters"
+          placeholderTextColor={colors.textMuted}
+          style={styles.input}
+        />
+        <Pressable
+          onPress={() => void onApplyPromo()}
+          disabled={promoPending || props.pending}
+          style={[
+            styles.secondaryButton,
+            promoPending ? styles.buttonDisabled : null,
+          ]}
+        >
+          <Text style={styles.secondaryButtonText}>
+            {promoPending ? "Проверяем…" : "Применить"}
+          </Text>
+        </Pressable>
+        {promoQuote ? (
+          <Text style={styles.promoOk}>{promoQuote.message}</Text>
+        ) : null}
 
         <Text style={styles.sectionTitle}>Доставка</Text>
         <Text style={styles.label}>Телефон</Text>
@@ -146,6 +213,7 @@ function createStyles(colors: AppThemeColors) {
       borderWidth: 1,
       borderColor: colors.cardBorder,
       gap: 4,
+      ...CARD_SHADOW,
     },
     cardTitle: {
       fontWeight: "600",
@@ -212,6 +280,24 @@ function createStyles(colors: AppThemeColors) {
       color: colors.buttonText,
       fontWeight: "700",
       fontSize: 16,
+    },
+    secondaryButton: {
+      marginTop: 8,
+      borderRadius: 12,
+      paddingVertical: 10,
+      alignItems: "center",
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.cardBackground,
+    },
+    secondaryButtonText: {
+      color: colors.textPrimary,
+      fontWeight: "600",
+    },
+    promoOk: {
+      color: colors.accent,
+      fontSize: 13,
+      marginTop: 4,
     },
   });
 }

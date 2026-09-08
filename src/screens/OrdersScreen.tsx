@@ -7,16 +7,18 @@ import {
   orderStatusLabel,
 } from "../lib/orders-format.shared";
 import type { OrdersScreenProps } from "./orders-screen.shared";
-import { BOTTOM_TAB_BAR_CONTENT_INSET } from "../components/BottomTabBar";
+import { BOTTOM_TAB_BAR_CONTENT_INSET, useBottomTabBarContentInset } from "../components/BottomTabBar";
+import { CARD_SHADOW } from "../lib/card-shadow.shared";
 
 export function OrdersScreen(props: OrdersScreenProps) {
   const { colors } = useAppTheme();
   const styles = createStyles(colors);
+  const tabBarInset = useBottomTabBarContentInset();
 
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: tabBarInset }]}
       keyboardShouldPersistTaps="handled"
       keyboardDismissMode="on-drag"
       showsVerticalScrollIndicator
@@ -69,6 +71,14 @@ export function OrdersScreen(props: OrdersScreenProps) {
                 {formatPriceSomLabel(item.priceCents)}
               </Text>
             ))}
+            {order.promoCode ? (
+              <Text style={styles.itemLine}>
+                Промокод {order.promoCode}
+                {order.discountCents > 0
+                  ? ` · −${formatPriceSomLabel(order.discountCents)}`
+                  : ""}
+              </Text>
+            ) : null}
             <Text style={styles.total}>
               Итого: {formatPriceSomLabel(order.totalCents)}
             </Text>
@@ -118,6 +128,7 @@ function createStyles(colors: AppThemeColors) {
       borderWidth: 1,
       borderColor: colors.cardBorder,
       gap: 6,
+      ...CARD_SHADOW,
     },
     cardHeader: {
       flexDirection: "row",
