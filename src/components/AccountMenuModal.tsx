@@ -7,6 +7,7 @@ export function AccountMenuModal(props: {
   visible: boolean;
   onClose: () => void;
   onOpenSupport: () => void;
+  onOpenChangePassword: () => void;
   onLogout: () => void;
 }) {
   const insets = useSafeAreaInsets();
@@ -43,6 +44,16 @@ export function AccountMenuModal(props: {
               }}
             >
               <Text style={styles.menuItemText}>Поддержка</Text>
+            </Pressable>
+            <View style={styles.separator} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                props.onClose();
+                props.onOpenChangePassword();
+              }}
+            >
+              <Text style={styles.menuItemText}>Сменить пароль</Text>
             </Pressable>
             <View style={styles.separator} />
             <Pressable

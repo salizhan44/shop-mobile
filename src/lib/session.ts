@@ -73,6 +73,7 @@ export function normalizeCustomer(value: unknown): CustomerPublic | null {
     homeAddress:
       typeof body.homeAddress === "string" ? body.homeAddress : "",
     avatarUrl: typeof body.avatarUrl === "string" ? body.avatarUrl : "",
+    hasPassword: body.hasPassword !== false,
   };
 }
 

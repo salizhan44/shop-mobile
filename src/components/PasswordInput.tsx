@@ -7,6 +7,8 @@ export function PasswordInput(props: {
   value: string;
   onChangeText: (value: string) => void;
   placeholder?: string;
+  onFocus?: () => void;
+  autoComplete?: "password" | "new-password" | "current-password";
 }) {
   const [visible, setVisible] = useState(false);
   const { colors } = useAppTheme();
@@ -20,6 +22,8 @@ export function PasswordInput(props: {
         secureTextEntry={!visible}
         value={props.value}
         onChangeText={props.onChangeText}
+        onFocus={props.onFocus}
+        autoComplete={props.autoComplete}
         style={styles.input}
       />
       <Pressable

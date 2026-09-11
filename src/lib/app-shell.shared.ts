@@ -29,6 +29,7 @@ export type AppShellProps = {
   onTabChange: (tab: MainTab) => void;
   onCloseAccountMenu: () => void;
   onOpenSupport: () => void;
+  onOpenChangePassword: () => void;
   onLogout: () => void;
   children: ReactNode;
 };

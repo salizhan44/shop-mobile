@@ -21,6 +21,8 @@ import {
   fetchMyOrders,
   fetchMyProfile,
   fetchProducts,
+  changeMyPassword,
+  verifyMyPassword,
   loginCustomer,
   loginWithGoogleIdToken,
   previewPromoCode,
@@ -62,6 +64,7 @@ import { PasswordInput } from "./src/components/PasswordInput";
 import { CartScreen } from "./src/screens/CartScreen";
 import { CatalogScreen } from "./src/screens/CatalogScreen";
 import { CheckoutScreen } from "./src/screens/CheckoutScreen";
+import { ChangePasswordScreen } from "./src/screens/ChangePasswordScreen";
 import { OrderSuccessScreen } from "./src/screens/OrderSuccessScreen";
 import { OrdersScreen } from "./src/screens/OrdersScreen";
 import { ProfileScreen } from "./src/screens/ProfileScreen";
@@ -83,6 +86,7 @@ function AppContent() {
   const [mainTab, setMainTab] = useState<MainTab>("catalog");
   const [supportOpen, setSupportOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [favoritesOpen, setFavoritesOpen] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [booting, setBooting] = useState(true);
@@ -329,6 +333,7 @@ function AppContent() {
     setCart(emptyCart);
     setSupportOpen(false);
     setAccountMenuOpen(false);
+    setChangePasswordOpen(false);
     setFavoritesOpen(false);
     onClearCatalogSearch();
     setScreen("login");
@@ -363,6 +368,39 @@ function AppContent() {
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "Не удалось сохранить профиль";
+      setProfileError(message);
+      throw caught instanceof Error ? caught : new Error(message);
+    } finally {
+      setProfilePending(false);
+    }
+  }
+
+  async function onVerifyCurrentPassword(currentPassword: string) {
+    setProfilePending(true);
+    setProfileError("");
+    try {
+      await verifyMyPassword(currentPassword);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "Неверный текущий пароль";
+      setProfileError(message);
+      throw caught instanceof Error ? caught : new Error(message);
+    } finally {
+      setProfilePending(false);
+    }
+  }
+
+  async function onChangePassword(input: {
+    currentPassword: string;
+    newPassword: string;
+  }) {
+    setProfilePending(true);
+    setProfileError("");
+    try {
+      await changeMyPassword(input);
+    } catch (caught) {
+      const message =
+        caught instanceof Error ? caught.message : "Не удалось сменить пароль";
       setProfileError(message);
       throw caught instanceof Error ? caught : new Error(message);
     } finally {
@@ -638,6 +676,18 @@ function AppContent() {
     );
   }
 
+  if (isLoggedIn && changePasswordOpen) {
+    return (
+      <ChangePasswordScreen
+        hasPassword={customer?.hasPassword !== false}
+        pending={profilePending}
+        onBack={() => setChangePasswordOpen(false)}
+        onVerifyCurrent={onVerifyCurrentPassword}
+        onSubmitNew={onChangePassword}
+      />
+    );
+  }
+
   if (isLoggedIn && supportOpen) {
     return (
       <View style={styles.root}>
@@ -701,6 +751,7 @@ function AppContent() {
         }}
         onCloseAccountMenu={() => setAccountMenuOpen(false)}
         onOpenSupport={() => setSupportOpen(true)}
+        onOpenChangePassword={() => setChangePasswordOpen(true)}
         onLogout={onLogout}
       >
         {mainTab === "catalog" ? (

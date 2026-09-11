@@ -310,7 +310,7 @@ function createStyles(colors: AppThemeColors) {
       backgroundColor: colors.screenBackground,
     },
     content: {
-      paddingTop: 12,
+      paddingTop: 12 * 0.7,
       paddingBottom: BOTTOM_TAB_BAR_CONTENT_INSET,
     },
     categoryTabs: {
@@ -327,7 +327,7 @@ function createStyles(colors: AppThemeColors) {
       borderRadius: 999,
       paddingHorizontal: 14,
       paddingVertical: 8,
-      borderWidth: StyleSheet.hairlineWidth,
+      borderWidth: StyleSheet.hairlineWidth * 1.7,
       borderColor: colors.border,
       backgroundColor: "transparent",
     },

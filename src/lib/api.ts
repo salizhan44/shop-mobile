@@ -17,6 +17,7 @@ export type CustomerPublic = {
   name: string;
   homeAddress: string;
   avatarUrl: string;
+  hasPassword: boolean;
 };
 
 export type CustomerAuthSuccess = {
@@ -150,6 +151,7 @@ function readCustomerPayload(data: unknown): CustomerPublic | null {
     homeAddress:
       typeof body.homeAddress === "string" ? body.homeAddress : "",
     avatarUrl: resolveMediaUrl(avatarUrl),
+    hasPassword: body.hasPassword !== false,
   };
 }
 
@@ -763,6 +765,31 @@ export async function updateMyProfile(input: {
     throw new Error("Некорректный ответ профиля");
   }
   return customer;
+}
+
+export async function verifyMyPassword(currentPassword: string): Promise<void> {
+  const response = await authorizedFetch("/api/customer/me/password/verify", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword }),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Неверный текущий пароль"));
+  }
+}
+
+export async function changeMyPassword(input: {
+  currentPassword: string;
+  newPassword: string;
+}): Promise<void> {
+  const response = await authorizedFetch("/api/customer/me/password", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось сменить пароль"));
+  }
 }
 
 export async function registerPushToken(

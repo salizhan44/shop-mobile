@@ -9,6 +9,17 @@ import type { AppHeaderProps } from "../lib/app-shell.shared";
 
 /** Высота лого в шапке (+90% от исходных 34, затем ещё +60%). */
 const HEADER_LOGO_HEIGHT = Math.round(34 * 1.9 * 1.6);
+const SEARCH_FIELD_HEIGHT = 42;
+/** Сдвиг лого вверх ≈ 20% его высоты. */
+const LOGO_SHIFT_UP = Math.round(HEADER_LOGO_HEIGHT * 0.2);
+const CATALOG_TOP_ROW_HEIGHT = Math.round(HEADER_LOGO_HEIGHT + 8);
+const SEARCH_GAP_AFTER_LOGO_NUDGE = 3.4 * 0.6 - SEARCH_FIELD_HEIGHT * 0.3;
+/** От визуального низа лого (бокс + сдвиг) до поля поиска. */
+const GAP_LOGO_TO_SEARCH =
+  CATALOG_TOP_ROW_HEIGHT / 2 +
+  LOGO_SHIFT_UP -
+  HEADER_LOGO_HEIGHT / 2 +
+  SEARCH_GAP_AFTER_LOGO_NUDGE;
 
 export function AppHeader(props: AppHeaderProps) {
   const insets = useSafeAreaInsets();
@@ -34,7 +45,7 @@ export function AppHeader(props: AppHeaderProps) {
 
   if (chrome) {
     const topPad = insets.top + 6.4 * 0.6;
-    const bottomPad = chrome.showSearch ? 9.6 * 0.6 : 4 * 0.6;
+    const bottomPad = chrome.showSearch ? 9.6 * 0.6 * 1.5 : 4 * 0.6;
     return (
       <View
         style={[
@@ -157,8 +168,9 @@ function createStyles(colors: AppThemeColors) {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      minHeight: Math.round(HEADER_LOGO_HEIGHT + 8),
-      marginBottom: 3.4 * 0.6,
+      minHeight: CATALOG_TOP_ROW_HEIGHT,
+      marginBottom:
+        SEARCH_GAP_AFTER_LOGO_NUDGE - GAP_LOGO_TO_SEARCH * (0.5 + 0.5 * 0.2),
     },
     searchRow: {
       flexDirection: "row",
@@ -198,11 +210,13 @@ function createStyles(colors: AppThemeColors) {
       alignItems: "center",
       justifyContent: "center",
       zIndex: 0,
+      transform: [{ translateY: -LOGO_SHIFT_UP }],
     },
     topSide: {
       zIndex: 1,
       minHeight: 44,
       justifyContent: "center",
+      transform: [{ translateY: -LOGO_SHIFT_UP }],
     },
     topRight: {
       flexDirection: "row",

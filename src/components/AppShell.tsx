@@ -38,6 +38,7 @@ export function AppShell(props: AppShellProps) {
         visible={props.accountMenuOpen}
         onClose={props.onCloseAccountMenu}
         onOpenSupport={props.onOpenSupport}
+        onOpenChangePassword={props.onOpenChangePassword}
         onLogout={props.onLogout}
       />
     </View>
