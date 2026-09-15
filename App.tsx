@@ -27,6 +27,7 @@ import {
   loginWithGoogleIdToken,
   previewPromoCode,
   registerCustomer,
+  SESSION_EXPIRED_MESSAGE,
   removeCartItem,
   updateCartItemQuantity,
   updateMyProfile,
@@ -45,10 +46,12 @@ import { getMainTabTitle } from "./src/components/AppShell";
 import {
   EMPTY_CATALOG_FILTER,
   isCatalogFilterActive,
+  isCatalogSortActive,
   normalizeSearchQuery,
   type CatalogFilterApplied,
 } from "./src/lib/catalog-search.shared";
 import { CatalogFilterModal } from "./src/components/CatalogFilterModal";
+import { startAppSessionPing } from "./src/lib/app-session-ping";
 import { UPDATES_POLL_INTERVAL_MS } from "./src/lib/updates.shared";
 import { clearSession, loadCustomer, saveCustomer, saveSession } from "./src/lib/session";
 import {
@@ -137,7 +140,15 @@ function AppContent() {
           const profile = await fetchMyProfile();
           setCustomer(profile);
           await saveCustomer(profile);
-        } catch {
+        } catch (caught) {
+          if (
+            caught instanceof Error &&
+            caught.message === SESSION_EXPIRED_MESSAGE
+          ) {
+            await clearSession();
+            setCustomer(null);
+            return;
+          }
           // оставляем локальный профиль, если сеть недоступна
         }
       })
@@ -155,10 +166,21 @@ function AppContent() {
   }, [isLoggedIn]);
 
   useEffect(() => {
+    return startAppSessionPing(isLoggedIn);
+  }, [isLoggedIn]);
+
+  useEffect(() => {
     if (!isLoggedIn) {
       return;
     }
     void registerForOrderPushNotifications().catch((error) => {
+      if (
+        error instanceof Error &&
+        (error.message === SESSION_EXPIRED_MESSAGE ||
+          error.message === "Нужно войти")
+      ) {
+        return;
+      }
       console.warn("[push] register failed", error);
     });
   }, [isLoggedIn]);
@@ -528,6 +550,7 @@ function AppContent() {
     address: string;
     comment: string;
     promoCode: string;
+    pointsToSpend: number;
   }) {
     setCheckoutPending(true);
     setCartError("");
@@ -535,6 +558,21 @@ function AppContent() {
       const order = await checkoutOrder(input);
       setLastOrder(order);
       setCart(emptyCart);
+      try {
+        const profile = await fetchMyProfile();
+        setCustomer(profile);
+        await saveCustomer(profile);
+      } catch {
+        if (customer) {
+          setCustomer({
+            ...customer,
+            loyaltyPoints: Math.max(
+              0,
+              customer.loyaltyPoints - (input.pointsToSpend ?? 0),
+            ),
+          });
+        }
+      }
       setScreen("orderSuccess");
     } catch (caught) {
       setCartError(
@@ -621,6 +659,7 @@ function AppContent() {
         error={cartError}
         pending={checkoutPending}
         initialAddress={customer?.homeAddress ?? ""}
+        loyaltyPoints={customer?.loyaltyPoints ?? 0}
         onBack={() => {
           setCartError("");
           setScreen("login");
@@ -729,7 +768,9 @@ function AppContent() {
             onSubmit: onApplyCatalogSearch,
             onClear: onClearCatalogSearch,
           },
-          filterActive: isCatalogFilterActive(catalogFilter),
+          filterActive:
+            isCatalogFilterActive(catalogFilter) ||
+            isCatalogSortActive(catalogFilter),
           onOpenFilter: () => {
             Keyboard.dismiss();
             setCatalogFilterOpen(true);

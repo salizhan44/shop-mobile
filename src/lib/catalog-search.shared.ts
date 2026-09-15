@@ -25,11 +25,37 @@ export function isSubsequenceMatch(text: string, query: string): boolean {
   return queryIndex === query.length;
 }
 
+export const CATALOG_SORT_ORDERS = [
+  "default",
+  "price_asc",
+  "price_desc",
+  "name_asc",
+  "name_desc",
+] as const;
+
+export type CatalogSortOrder = (typeof CATALOG_SORT_ORDERS)[number];
+
+export const DEFAULT_CATALOG_SORT: CatalogSortOrder = "default";
+
+export function resolveCatalogSort(sort: unknown): CatalogSortOrder {
+  if (
+    sort === "default" ||
+    sort === "price_asc" ||
+    sort === "price_desc" ||
+    sort === "name_asc" ||
+    sort === "name_desc"
+  ) {
+    return sort;
+  }
+  return DEFAULT_CATALOG_SORT;
+}
+
 export type CatalogFilterApplied = {
   categoryId: string | null;
   subcategoryId: string | null;
   minPriceCents: number | null;
   maxPriceCents: number | null;
+  sort: CatalogSortOrder;
 };
 
 export const EMPTY_CATALOG_FILTER: CatalogFilterApplied = {
@@ -37,7 +63,57 @@ export const EMPTY_CATALOG_FILTER: CatalogFilterApplied = {
   subcategoryId: null,
   minPriceCents: null,
   maxPriceCents: null,
+  sort: DEFAULT_CATALOG_SORT,
 };
+
+export function catalogSortLabel(sort: CatalogSortOrder): string {
+  switch (sort) {
+    case "default":
+      return "По умолчанию";
+    case "price_asc":
+      return "Сначала дешёвые";
+    case "price_desc":
+      return "Сначала дорогие";
+    case "name_asc":
+      return "А–Я";
+    case "name_desc":
+      return "Я–А";
+  }
+}
+
+export function isCatalogSortActive(filter: CatalogFilterApplied): boolean {
+  return resolveCatalogSort(filter.sort) !== DEFAULT_CATALOG_SORT;
+}
+
+export function sortCatalogProducts(
+  products: readonly ProductPublic[],
+  sort: CatalogSortOrder,
+): ProductPublic[] {
+  if (sort === DEFAULT_CATALOG_SORT) {
+    return products.slice();
+  }
+
+  const ranked = products.map((product, index) => ({ product, index }));
+  ranked.sort((left, right) => {
+    let compared = 0;
+    if (sort === "price_asc" || sort === "price_desc") {
+      compared = left.product.priceCents - right.product.priceCents;
+      if (sort === "price_desc") {
+        compared = -compared;
+      }
+    } else {
+      compared = left.product.name.localeCompare(right.product.name, "ru", {
+        numeric: true,
+        sensitivity: "base",
+      });
+      if (sort === "name_desc") {
+        compared = -compared;
+      }
+    }
+    return compared !== 0 ? compared : left.index - right.index;
+  });
+  return ranked.map((item) => item.product);
+}
 
 /** Быстрые вкладки категорий под каруселью. */
 export const CATALOG_QUICK_CATEGORY_NAMES = [
@@ -137,7 +213,7 @@ export function filterProductsByCatalog(
   query: string,
   filter: CatalogFilterApplied,
 ): ProductPublic[] {
-  return filterProductsBySearch(products, query).filter((product) => {
+  const filtered = filterProductsBySearch(products, query).filter((product) => {
     if (filter.categoryId && product.categoryId !== filter.categoryId) {
       return false;
     }
@@ -161,6 +237,7 @@ export function filterProductsByCatalog(
     }
     return true;
   });
+  return sortCatalogProducts(filtered, resolveCatalogSort(filter.sort));
 }
 
 export function customerInitials(name: string): string {

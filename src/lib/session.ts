@@ -74,6 +74,10 @@ export function normalizeCustomer(value: unknown): CustomerPublic | null {
       typeof body.homeAddress === "string" ? body.homeAddress : "",
     avatarUrl: typeof body.avatarUrl === "string" ? body.avatarUrl : "",
     hasPassword: body.hasPassword !== false,
+    loyaltyPoints:
+      typeof body.loyaltyPoints === "number" && body.loyaltyPoints > 0
+        ? Math.floor(body.loyaltyPoints)
+        : 0,
   };
 }
 

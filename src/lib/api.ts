@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 import {
+  clearSession,
   getAccessToken,
   getRefreshToken,
   saveSession,
@@ -11,6 +12,8 @@ import {
   type UpdatesCheckPublic,
 } from "./updates.shared";
 
+export const SESSION_EXPIRED_MESSAGE = "Сессия истекла, войдите снова";
+
 export type CustomerPublic = {
   id: string;
   email: string;
@@ -18,6 +21,7 @@ export type CustomerPublic = {
   homeAddress: string;
   avatarUrl: string;
   hasPassword: boolean;
+  loyaltyPoints: number;
 };
 
 export type CustomerAuthSuccess = {
@@ -31,6 +35,7 @@ export type ProductPublic = {
   name: string;
   description: string;
   priceCents: number;
+  compareAtCents: number | null;
   imageUrl: string;
   categoryId: string | null;
   subcategoryId: string | null;
@@ -152,6 +157,10 @@ function readCustomerPayload(data: unknown): CustomerPublic | null {
       typeof body.homeAddress === "string" ? body.homeAddress : "",
     avatarUrl: resolveMediaUrl(avatarUrl),
     hasPassword: body.hasPassword !== false,
+    loyaltyPoints:
+      typeof body.loyaltyPoints === "number" && body.loyaltyPoints > 0
+        ? Math.floor(body.loyaltyPoints)
+        : 0,
   };
 }
 
@@ -273,6 +282,10 @@ export async function fetchProducts(): Promise<ProductPublic[]> {
         name: body.name,
         description: body.description,
         priceCents: body.priceCents,
+        compareAtCents:
+          typeof body.compareAtCents === "number" && body.compareAtCents > 0
+            ? body.compareAtCents
+            : null,
         imageUrl: resolveMediaUrl(
           typeof body.imageUrl === "string" ? body.imageUrl : "",
         ),
@@ -336,6 +349,7 @@ export type CartLinePublic = {
   name: string;
   description: string;
   priceCents: number;
+  compareAtCents: number | null;
   imageUrl: string;
   quantity: number;
   lineTotalCents: number;
@@ -359,6 +373,10 @@ function normalizeCart(data: CartPublic): CartPublic {
     totalCents: data.totalCents,
     items: data.items.map((item) => ({
       ...item,
+      compareAtCents:
+        typeof item.compareAtCents === "number" && item.compareAtCents > 0
+          ? item.compareAtCents
+          : null,
       imageUrl: resolveMediaUrl(
         typeof item.imageUrl === "string" ? item.imageUrl : "",
       ),
@@ -386,22 +404,42 @@ function errorMessage(data: unknown, fallback: string): string {
   return fallback;
 }
 
-async function refreshSession(): Promise<boolean> {
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshSessionOnce(): Promise<boolean> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) {
     return false;
   }
-  const response = await fetch(`${API_URL}/api/auth/customer/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
-  });
-  const data = await parseJson(response);
-  if (!response.ok) {
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}/api/auth/customer/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch {
+    throw new Error("Нет связи с сервером");
+  }
+  if (response.status === 401) {
     return false;
   }
+  if (!response.ok) {
+    throw new Error("Нет связи с сервером");
+  }
+  const data = await parseJson(response);
   await saveSession(normalizeAuthSuccess(data));
   return true;
+}
+
+async function refreshSession(): Promise<boolean> {
+  if (refreshInFlight) {
+    return refreshInFlight;
+  }
+  refreshInFlight = refreshSessionOnce().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
 }
 
 async function authorizedFetch(
@@ -426,7 +464,8 @@ async function authorizedFetch(
     const ok = await refreshSession();
     const next = await getAccessToken();
     if (!ok || !next) {
-      throw new Error("Сессия истекла, войдите снова");
+      await clearSession();
+      throw new Error(SESSION_EXPIRED_MESSAGE);
     }
     response = await withToken(next);
   }
@@ -491,6 +530,8 @@ export type OrderPublic = {
   status: "PENDING" | "CONFIRMED" | "REJECTED";
   totalCents: number;
   discountCents: number;
+  pointsSpent: number;
+  pointsEarned: number;
   promoCode: string;
   phone: string;
   address: string;
@@ -536,6 +577,7 @@ export async function checkoutOrder(input: {
   address: string;
   comment: string;
   promoCode?: string;
+  pointsToSpend?: number;
 }): Promise<OrderPublic> {
   const response = await authorizedFetch("/api/orders", {
     method: "POST",
@@ -745,6 +787,17 @@ export async function fetchMyProfile(): Promise<CustomerPublic> {
     throw new Error("Некорректный ответ профиля");
   }
   return customer;
+}
+
+export async function pingAppSession(seconds: number): Promise<void> {
+  const response = await authorizedFetch("/api/customer/session", {
+    method: "POST",
+    body: JSON.stringify({ seconds }),
+  });
+  if (!response.ok) {
+    const data = await parseJson(response);
+    throw new Error(errorMessage(data, "Не удалось сохранить сессию"));
+  }
 }
 
 export async function updateMyProfile(input: {

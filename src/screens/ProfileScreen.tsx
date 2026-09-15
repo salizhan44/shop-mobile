@@ -225,6 +225,11 @@ export function ProfileScreen(props: ProfileScreenProps) {
             </Pressable>
           ) : null}
         </View>
+        <View style={styles.pointsCard}>
+          <Text style={styles.pointsLabel}>Баллы</Text>
+          <Text style={styles.pointsValue}>{props.customer.loyaltyPoints}</Text>
+          <Text style={styles.pointsHint}>1 балл = 1 сом при оплате</Text>
+        </View>
       </View>
 
       <View style={styles.card}>
@@ -317,6 +322,32 @@ function createStyles(colors: AppThemeColors) {
     },
     email: {
       fontSize: 14,
+      color: colors.textMuted,
+    },
+    pointsCard: {
+      width: "100%",
+      borderRadius: 14,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      backgroundColor: colors.cardBackground,
+      borderWidth: 1,
+      borderColor: colors.cardBorder,
+      alignItems: "center",
+      gap: 2,
+      ...CARD_SHADOW,
+    },
+    pointsLabel: {
+      fontSize: 13,
+      color: colors.textMuted,
+      fontWeight: "600",
+    },
+    pointsValue: {
+      fontSize: 28,
+      fontWeight: "700",
+      color: colors.accent,
+    },
+    pointsHint: {
+      fontSize: 12,
       color: colors.textMuted,
     },
     avatarActions: {

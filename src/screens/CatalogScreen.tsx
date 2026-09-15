@@ -61,6 +61,7 @@ export function CatalogScreen(props: CatalogScreenProps) {
       fresh.name !== selectedProduct.name ||
       fresh.description !== selectedProduct.description ||
       fresh.priceCents !== selectedProduct.priceCents ||
+      fresh.compareAtCents !== selectedProduct.compareAtCents ||
       fresh.imageUrl !== selectedProduct.imageUrl
     ) {
       setSelectedProduct(fresh);
@@ -118,9 +119,16 @@ export function CatalogScreen(props: CatalogScreenProps) {
           <View style={styles.detailBody}>
             <Text style={styles.detailName}>{selectedProduct.name}</Text>
             <View style={styles.detailPriceRow}>
-              <Text style={styles.detailPrice}>
-                {formatPriceSomLabel(selectedProduct.priceCents)}
-              </Text>
+              <View style={styles.detailPriceBlock}>
+                {selectedProduct.compareAtCents ? (
+                  <Text style={styles.detailPriceOld}>
+                    {formatPriceSomLabel(selectedProduct.compareAtCents)}
+                  </Text>
+                ) : null}
+                <Text style={styles.detailPrice}>
+                  {formatPriceSomLabel(selectedProduct.priceCents)}
+                </Text>
+              </View>
               <Pressable
                 onPress={() => props.onToggleFavorite(selectedProduct.id)}
                 style={styles.detailFavoriteButton}
@@ -260,9 +268,16 @@ export function CatalogScreen(props: CatalogScreenProps) {
                   {product.name}
                 </Text>
                 <View style={styles.priceRow}>
-                  <Text style={styles.price} numberOfLines={1}>
-                    {formatPriceSomLabel(product.priceCents)}
-                  </Text>
+                  <View style={styles.priceBlock}>
+                    {product.compareAtCents ? (
+                      <Text style={styles.priceOld} numberOfLines={1}>
+                        {formatPriceSomLabel(product.compareAtCents)}
+                      </Text>
+                    ) : null}
+                    <Text style={styles.price} numberOfLines={1}>
+                      {formatPriceSomLabel(product.priceCents)}
+                    </Text>
+                  </View>
                   <Pressable
                     onPress={() => props.onToggleFavorite(product.id)}
                     hitSlop={6}
@@ -400,8 +415,16 @@ function createStyles(colors: AppThemeColors) {
       justifyContent: "space-between",
       gap: 12,
     },
-    detailPrice: {
+    detailPriceBlock: {
       flex: 1,
+      gap: 2,
+    },
+    detailPriceOld: {
+      fontSize: 14,
+      color: colors.textMuted,
+      textDecorationLine: "line-through",
+    },
+    detailPrice: {
       fontSize: 22,
       fontWeight: "700",
       color: colors.accent,
@@ -499,9 +522,16 @@ function createStyles(colors: AppThemeColors) {
       alignItems: "center",
       gap: 4,
     },
-    price: {
+    priceBlock: {
       flex: 1,
       minWidth: 0,
+    },
+    priceOld: {
+      fontSize: 12,
+      color: colors.textMuted,
+      textDecorationLine: "line-through",
+    },
+    price: {
       fontSize: 18,
       fontWeight: "700",
       color: colors.accent,

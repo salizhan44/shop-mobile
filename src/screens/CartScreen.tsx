@@ -44,6 +44,11 @@ export function CartScreen(props: CartScreenProps) {
                 )}
                 <View style={styles.info}>
                   <Text style={styles.cardTitle}>{item.name}</Text>
+                  {item.compareAtCents ? (
+                    <Text style={styles.priceOld}>
+                      {formatPriceSomLabel(item.compareAtCents)}
+                    </Text>
+                  ) : null}
                   <Text style={styles.price}>
                     {formatPriceSomLabel(item.priceCents)}
                   </Text>
@@ -174,6 +179,11 @@ function createStyles(colors: AppThemeColors) {
     cardTitle: {
       fontWeight: "700",
       color: colors.textPrimary,
+    },
+    priceOld: {
+      color: colors.textMuted,
+      fontSize: 12,
+      textDecorationLine: "line-through",
     },
     price: {
       color: colors.textMuted,

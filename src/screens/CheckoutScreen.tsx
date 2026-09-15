@@ -15,7 +15,17 @@ import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import { CARD_SHADOW } from "../lib/card-shadow.shared";
-import type { CheckoutScreenProps } from "./checkout-screen.shared";
+import {
+  CHECKOUT_PAY_MODES,
+  checkoutPayModeLabel,
+  type CheckoutPayMode,
+  type CheckoutScreenProps,
+} from "./checkout-screen.shared";
+import {
+  clampLoyaltyPointsToSpend,
+  maxLoyaltyPointsForPayable,
+  payableAfterLoyaltyCents,
+} from "../lib/loyalty.shared";
 import type { PromoQuotePublic } from "../lib/api";
 
 export function CheckoutScreen(props: CheckoutScreenProps) {
@@ -28,6 +38,8 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
   const [promoCode, setPromoCode] = useState("");
   const [promoQuote, setPromoQuote] = useState<PromoQuotePublic | null>(null);
   const [promoPending, setPromoPending] = useState(false);
+  const [payMode, setPayMode] = useState<CheckoutPayMode>("money");
+  const [pointsDraft, setPointsDraft] = useState("");
   const [formError, setFormError] = useState("");
 
   const itemCount = props.cart.items.reduce(
@@ -52,13 +64,32 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
     }
   }
 
-  const payableCents = promoQuote?.payableCents ?? props.cart.totalCents;
+  const payableBeforePoints = promoQuote?.payableCents ?? props.cart.totalCents;
+  const maxPoints = maxLoyaltyPointsForPayable(
+    props.loyaltyPoints,
+    payableBeforePoints,
+  );
+  const requestedPoints =
+    payMode === "money"
+      ? 0
+      : payMode === "points_max"
+        ? maxPoints
+        : Number.parseInt(pointsDraft, 10) || 0;
+  const pointsToSpend = clampLoyaltyPointsToSpend({
+    requested: requestedPoints,
+    balance: props.loyaltyPoints,
+    payableCents: payableBeforePoints,
+  });
+  const payableCents = payableAfterLoyaltyCents(
+    payableBeforePoints,
+    pointsToSpend,
+  );
 
   async function onSubmit() {
     Keyboard.dismiss();
     setFormError("");
     try {
-      await props.onSubmit({ phone, address, comment, promoCode });
+      await props.onSubmit({ phone, address, comment, promoCode, pointsToSpend });
     } catch (caught) {
       setFormError(
         caught instanceof Error ? caught.message : "Не удалось оформить заказ",
@@ -136,6 +167,58 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
         {promoQuote ? (
           <Text style={styles.promoOk}>{promoQuote.message}</Text>
         ) : null}
+
+        <Text style={styles.sectionTitle}>Оплата баллами</Text>
+        <Text style={styles.muted}>
+          На счёте {props.loyaltyPoints} б. · 1 балл = 1 сом · за 100 сом оплаты
+          начислим 5 баллов
+        </Text>
+        {maxPoints > 0 ? (
+          <>
+            <View style={styles.chipRow}>
+              {CHECKOUT_PAY_MODES.map((mode) => {
+                const active = payMode === mode;
+                return (
+                  <Pressable
+                    key={mode}
+                    onPress={() => setPayMode(mode)}
+                    style={[styles.chip, active ? styles.chipActive : null]}
+                  >
+                    <Text
+                      style={[
+                        styles.chipText,
+                        active ? styles.chipTextActive : null,
+                      ]}
+                    >
+                      {checkoutPayModeLabel(mode)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {payMode === "points_part" ? (
+              <>
+                <Text style={styles.label}>Сколько баллов списать</Text>
+                <TextInput
+                  value={pointsDraft}
+                  onChangeText={setPointsDraft}
+                  placeholder={`До ${maxPoints}`}
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="number-pad"
+                  style={styles.input}
+                />
+              </>
+            ) : null}
+            {pointsToSpend > 0 ? (
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Баллами</Text>
+                <Text style={styles.muted}>−{pointsToSpend} б.</Text>
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <Text style={styles.muted}>Пока нечем списать — копите с заказов.</Text>
+        )}
 
         <Text style={styles.sectionTitle}>Доставка</Text>
         <Text style={styles.label}>Телефон</Text>
@@ -298,6 +381,32 @@ function createStyles(colors: AppThemeColors) {
       color: colors.accent,
       fontSize: 13,
       marginTop: 4,
+    },
+    chipRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: 8,
+    },
+    chip: {
+      borderRadius: 999,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.cardBackground,
+    },
+    chipActive: {
+      backgroundColor: colors.buttonBackground,
+      borderColor: colors.buttonBackground,
+    },
+    chipText: {
+      color: colors.textPrimary,
+      fontSize: 14,
+      fontWeight: "600",
+    },
+    chipTextActive: {
+      color: colors.buttonText,
     },
   });
 }

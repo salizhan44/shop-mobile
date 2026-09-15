@@ -12,9 +12,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
 import {
+  CATALOG_SORT_ORDERS,
+  DEFAULT_CATALOG_SORT,
+  catalogSortLabel,
   formatCentsToSomInput,
   parsePriceSomToCents,
+  resolveCatalogSort,
   type CatalogFilterApplied,
+  type CatalogSortOrder,
 } from "../lib/catalog-search.shared";
 import type { CatalogFilterModalProps } from "./catalog-filter-modal.shared";
 
@@ -26,6 +31,9 @@ export function CatalogFilterModal(props: CatalogFilterModalProps) {
   const [subcategoryId, setSubcategoryId] = useState<string | null>(null);
   const [minPriceSom, setMinPriceSom] = useState("");
   const [maxPriceSom, setMaxPriceSom] = useState("");
+  const [sort, setSort] = useState<CatalogSortOrder>(() =>
+    resolveCatalogSort(props.initialFilter.sort),
+  );
   const [formError, setFormError] = useState("");
 
   useEffect(() => {
@@ -36,6 +44,7 @@ export function CatalogFilterModal(props: CatalogFilterModalProps) {
     setSubcategoryId(props.initialFilter.subcategoryId);
     setMinPriceSom(formatCentsToSomInput(props.initialFilter.minPriceCents));
     setMaxPriceSom(formatCentsToSomInput(props.initialFilter.maxPriceCents));
+    setSort(resolveCatalogSort(props.initialFilter.sort));
     setFormError("");
   }, [props.visible, props.initialFilter]);
 
@@ -49,6 +58,7 @@ export function CatalogFilterModal(props: CatalogFilterModalProps) {
     setSubcategoryId(null);
     setMinPriceSom("");
     setMaxPriceSom("");
+    setSort(DEFAULT_CATALOG_SORT);
     setFormError("");
   }
 
@@ -77,6 +87,7 @@ export function CatalogFilterModal(props: CatalogFilterModalProps) {
       subcategoryId: categoryId ? subcategoryId : null,
       minPriceCents,
       maxPriceCents,
+      sort: resolveCatalogSort(sort),
     };
     props.onApply(next);
   }
@@ -202,6 +213,29 @@ export function CatalogFilterModal(props: CatalogFilterModalProps) {
               </View>
             </>
           ) : null}
+
+          <Text style={styles.sectionTitle}>Сортировка</Text>
+          <View style={styles.chipRow}>
+            {CATALOG_SORT_ORDERS.map((order) => {
+              const active = resolveCatalogSort(sort) === order;
+              return (
+                <Pressable
+                  key={order}
+                  onPress={() => setSort(order)}
+                  style={[styles.chip, active ? styles.chipActive : null]}
+                >
+                  <Text
+                    style={[
+                      styles.chipText,
+                      active ? styles.chipTextActive : null,
+                    ]}
+                  >
+                    {catalogSortLabel(order)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
 
           <Text style={styles.sectionTitle}>Цена, сом</Text>
           <View style={styles.priceRow}>

@@ -1,0 +1,2 @@
+export const SESSION_PING_SECONDS_MIN = 1;
+export const SESSION_PING_SECONDS_MAX = 180;
