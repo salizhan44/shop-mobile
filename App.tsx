@@ -62,6 +62,7 @@ import {
 import { AppHeader } from "./src/components/AppHeader";
 import { AppShell } from "./src/components/AppShell";
 import { BrandLogo } from "./src/components/BrandLogo";
+import { ForgotPasswordLink } from "./src/components/ForgotPasswordLink";
 import { GoogleSignInButton } from "./src/components/GoogleSignInButton";
 import { PasswordInput } from "./src/components/PasswordInput";
 import { CartScreen } from "./src/screens/CartScreen";
@@ -899,6 +900,9 @@ function AppContent() {
         onChangeText={setPassword}
         placeholder="Пароль"
       />
+      {screen === "login" ? (
+        <ForgotPasswordLink email={email} disabled={pending} />
+      ) : null}
       {error ? <Text style={styles.error}>{error}</Text> : null}
       <Pressable
         onPress={screen === "login" ? onLogin : onRegister}
@@ -909,15 +913,11 @@ function AppContent() {
           {pending ? "Подождите…" : screen === "login" ? "Войти" : "Создать аккаунт"}
         </Text>
       </Pressable>
-      {screen === "login" ? (
-        <>
-          <Text style={styles.orDivider}>или</Text>
-          <GoogleSignInButton
-            disabled={pending}
-            onIdToken={onGoogleLogin}
-          />
-        </>
-      ) : null}
+      <Text style={styles.orDivider}>или</Text>
+      <GoogleSignInButton
+        disabled={pending}
+        onIdToken={onGoogleLogin}
+      />
       <Pressable
         onPress={() => {
           setError("");

@@ -11,6 +11,7 @@ import {
   isUpdatesCheckPublic,
   type UpdatesCheckPublic,
 } from "./updates.shared";
+import { toOrderDeliveryPublic, type OrderDeliveryPublic } from "./delivery.shared";
 
 export const SESSION_EXPIRED_MESSAGE = "Сессия истекла, войдите снова";
 
@@ -539,7 +540,7 @@ export type OrderPublic = {
   rejectionReason: string | null;
   items: OrderLinePublic[];
   createdAt: string;
-};
+} & OrderDeliveryPublic;
 
 function isOrderPublic(value: unknown): value is OrderPublic {
   if (typeof value !== "object" || value === null) {
@@ -559,17 +560,42 @@ function isOrderPublic(value: unknown): value is OrderPublic {
   const discountCents =
     typeof body.discountCents === "number" ? body.discountCents : 0;
   const promoCode = typeof body.promoCode === "string" ? body.promoCode : "";
-  return (
-    typeof body.id === "string" &&
-    typeof body.status === "string" &&
-    typeof body.totalCents === "number" &&
-    discountCents >= 0 &&
-    typeof promoCode === "string" &&
-    typeof body.phone === "string" &&
-    typeof body.address === "string" &&
-    Array.isArray(body.items) &&
-    typeof body.createdAt === "string"
-  );
+  if (
+    typeof body.id !== "string" ||
+    typeof body.status !== "string" ||
+    typeof body.totalCents !== "number" ||
+    discountCents < 0 ||
+    typeof promoCode !== "string" ||
+    typeof body.phone !== "string" ||
+    typeof body.address !== "string" ||
+    !Array.isArray(body.items) ||
+    typeof body.createdAt !== "string"
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function readOrderPublic(value: unknown): OrderPublic | null {
+  if (!isOrderPublic(value)) {
+    return null;
+  }
+  const body = value as OrderPublic & Record<string, unknown>;
+  const delivery = toOrderDeliveryPublic({
+    address: body.address,
+    destLat: typeof body.destLat === "number" ? body.destLat : null,
+    destLng: typeof body.destLng === "number" ? body.destLng : null,
+    etaMinutes: typeof body.etaMinutes === "number" ? body.etaMinutes : null,
+    shop:
+      typeof body.shopLat === "number" && typeof body.shopLng === "number"
+        ? { lat: body.shopLat, lng: body.shopLng }
+        : undefined,
+  });
+  return {
+    ...body,
+    ...delivery,
+    etaMinutes: body.status === "CONFIRMED" ? delivery.etaMinutes : null,
+  };
 }
 
 export async function checkoutOrder(input: {
@@ -587,10 +613,11 @@ export async function checkoutOrder(input: {
   if (!response.ok) {
     throw new Error(errorMessage(data, "Не удалось оформить заказ"));
   }
-  if (!isOrderPublic(data)) {
+  const order = readOrderPublic(data);
+  if (!order) {
     throw new Error("Некорректный ответ заказа");
   }
-  return data;
+  return order;
 }
 
 export type PromoQuotePublic = {
@@ -632,15 +659,23 @@ export async function previewPromoCode(code: string): Promise<PromoQuotePublic> 
   return data;
 }
 
-function isOrdersList(value: unknown): value is { orders: OrderPublic[] } {
+function readOrdersList(value: unknown): OrderPublic[] | null {
   if (typeof value !== "object" || value === null) {
-    return false;
+    return null;
   }
   const body = value as { orders?: unknown };
   if (!Array.isArray(body.orders)) {
-    return false;
+    return null;
   }
-  return body.orders.every((item) => isOrderPublic(item));
+  const orders: OrderPublic[] = [];
+  for (const item of body.orders) {
+    const order = readOrderPublic(item);
+    if (!order) {
+      return null;
+    }
+    orders.push(order);
+  }
+  return orders;
 }
 
 export async function fetchMyOrders(): Promise<OrderPublic[]> {
@@ -649,10 +684,11 @@ export async function fetchMyOrders(): Promise<OrderPublic[]> {
   if (!response.ok) {
     throw new Error(errorMessage(data, "Не удалось загрузить заказы"));
   }
-  if (!isOrdersList(data)) {
+  const orders = readOrdersList(data);
+  if (!orders) {
     throw new Error("Некорректный ответ заказов");
   }
-  return data.orders;
+  return orders;
 }
 
 export type SupportTicketPublic = {

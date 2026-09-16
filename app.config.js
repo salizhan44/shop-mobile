@@ -10,16 +10,26 @@ const config = {
   slug: "shop-mobile",
   version: "1.0.0",
   orientation: "portrait",
+  icon: "./assets/logo.png",
   scheme: "shop",
   backgroundColor: "#ecf7fd",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
+  splash: {
+    image: "./assets/logo.png",
+    resizeMode: "contain",
+    backgroundColor: "#ecf7fd",
+  },
   ios: {
     supportsTablet: true,
     bundleIdentifier: "com.rola.shop",
   },
   android: {
     package: "com.rola.shop",
+    adaptiveIcon: {
+      foregroundImage: "./assets/logo.png",
+      backgroundColor: "#061e3a",
+    },
     predictiveBackGestureEnabled: false,
     usesCleartextTraffic: true,
     softwareKeyboardLayoutMode: "resize",

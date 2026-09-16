@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Keyboard,
   Pressable,
@@ -13,6 +13,7 @@ import { StatusBar } from "expo-status-bar";
 import { AppHeader } from "../components/AppHeader";
 import type { AppThemeColors } from "../lib/app-theme.shared";
 import { useAppTheme } from "../lib/theme-context";
+import { useKeepFocusedInputVisible } from "../lib/keyboard-field";
 import { formatPriceSomLabel } from "../lib/orders-format.shared";
 import { CARD_SHADOW } from "../lib/card-shadow.shared";
 import {
@@ -32,6 +33,19 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
   const { colors, mode } = useAppTheme();
   const styles = createStyles(colors);
   const insets = useSafeAreaInsets();
+  const [footerHeight, setFooterHeight] = useState(0);
+  const {
+    scrollRef,
+    keyboardPad,
+    onScroll,
+    onFocusField,
+    automaticallyAdjustKeyboardInsets,
+  } = useKeepFocusedInputVisible(footerHeight);
+  const promoWrapRef = useRef<View>(null);
+  const pointsWrapRef = useRef<View>(null);
+  const phoneWrapRef = useRef<View>(null);
+  const addressWrapRef = useRef<View>(null);
+  const commentWrapRef = useRef<View>(null);
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState(props.initialAddress ?? "");
   const [comment, setComment] = useState("");
@@ -103,10 +117,17 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
       <AppHeader title="Оформление" onBack={props.onBack} />
 
       <ScrollView
+        ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 24 + keyboardPad },
+        ]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        scrollEventThrottle={16}
+        onScroll={onScroll}
+        automaticallyAdjustKeyboardInsets={automaticallyAdjustKeyboardInsets}
       >
         <Text style={styles.sectionTitle}>Ваш заказ</Text>
         {props.cart.items.map((item) => (
@@ -140,18 +161,21 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
         </View>
 
         <Text style={styles.sectionTitle}>Промокод</Text>
-        <Text style={styles.label}>Код</Text>
-        <TextInput
-          value={promoCode}
-          onChangeText={(value) => {
-            setPromoCode(value);
-            setPromoQuote(null);
-          }}
-          placeholder="Необязательно"
-          autoCapitalize="characters"
-          placeholderTextColor={colors.textMuted}
-          style={styles.input}
-        />
+        <View ref={promoWrapRef} collapsable={false}>
+          <Text style={styles.label}>Код</Text>
+          <TextInput
+            value={promoCode}
+            onChangeText={(value) => {
+              setPromoCode(value);
+              setPromoQuote(null);
+            }}
+            onFocus={() => onFocusField(promoWrapRef)}
+            placeholder="Необязательно"
+            autoCapitalize="characters"
+            placeholderTextColor={colors.textMuted}
+            style={styles.input}
+          />
+        </View>
         <Pressable
           onPress={() => void onApplyPromo()}
           disabled={promoPending || props.pending}
@@ -197,17 +221,18 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
               })}
             </View>
             {payMode === "points_part" ? (
-              <>
+              <View ref={pointsWrapRef} collapsable={false}>
                 <Text style={styles.label}>Сколько баллов списать</Text>
                 <TextInput
                   value={pointsDraft}
                   onChangeText={setPointsDraft}
+                  onFocus={() => onFocusField(pointsWrapRef)}
                   placeholder={`До ${maxPoints}`}
                   placeholderTextColor={colors.textMuted}
                   keyboardType="number-pad"
                   style={styles.input}
                 />
-              </>
+              </View>
             ) : null}
             {pointsToSpend > 0 ? (
               <View style={styles.totalRow}>
@@ -221,39 +246,53 @@ export function CheckoutScreen(props: CheckoutScreenProps) {
         )}
 
         <Text style={styles.sectionTitle}>Доставка</Text>
-        <Text style={styles.label}>Телефон</Text>
-        <TextInput
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="+996 700 000 000"
-          placeholderTextColor={colors.textMuted}
-          keyboardType="phone-pad"
-          style={styles.input}
-        />
-        <Text style={styles.label}>Адрес</Text>
-        <TextInput
-          value={address}
-          onChangeText={setAddress}
-          placeholder="Город, улица, дом, квартира"
-          placeholderTextColor={colors.textMuted}
-          style={styles.input}
-        />
-        <Text style={styles.label}>Комментарий</Text>
-        <TextInput
-          value={comment}
-          onChangeText={setComment}
-          placeholder="Необязательно"
-          placeholderTextColor={colors.textMuted}
-          multiline
-          style={[styles.input, styles.textarea]}
-        />
+        <View ref={phoneWrapRef} collapsable={false}>
+          <Text style={styles.label}>Телефон</Text>
+          <TextInput
+            value={phone}
+            onChangeText={setPhone}
+            onFocus={() => onFocusField(phoneWrapRef)}
+            placeholder="+996 700 000 000"
+            placeholderTextColor={colors.textMuted}
+            keyboardType="phone-pad"
+            style={styles.input}
+          />
+        </View>
+        <View ref={addressWrapRef} collapsable={false}>
+          <Text style={styles.label}>Адрес</Text>
+          <TextInput
+            value={address}
+            onChangeText={setAddress}
+            onFocus={() => onFocusField(addressWrapRef)}
+            placeholder="Город, улица, дом, квартира"
+            placeholderTextColor={colors.textMuted}
+            style={styles.input}
+          />
+        </View>
+        <View ref={commentWrapRef} collapsable={false}>
+          <Text style={styles.label}>Комментарий</Text>
+          <TextInput
+            value={comment}
+            onChangeText={setComment}
+            onFocus={() => onFocusField(commentWrapRef)}
+            placeholder="Необязательно"
+            placeholderTextColor={colors.textMuted}
+            multiline
+            style={[styles.input, styles.textarea]}
+          />
+        </View>
 
         {formError || props.error ? (
           <Text style={styles.error}>{formError || props.error}</Text>
         ) : null}
       </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}>
+      <View
+        style={[styles.footer, { paddingBottom: 12 + insets.bottom }]}
+        onLayout={(event) => {
+          setFooterHeight(event.nativeEvent.layout.height);
+        }}
+      >
         <Pressable
           onPress={onSubmit}
           disabled={props.pending}

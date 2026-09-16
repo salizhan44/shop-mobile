@@ -55,9 +55,7 @@ export function GoogleSignInButton(props: {
         <Pressable
           disabled={props.disabled}
           onPress={() =>
-            setConfigError(
-              "Нужен Google Client ID: добавьте EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID в mobile/.env и перезапустите Expo",
-            )
+            setConfigError("Вход через Google сейчас недоступен");
           }
           style={[styles.button, props.disabled ? styles.buttonDisabled : null]}
         >
@@ -172,11 +170,6 @@ function GoogleSignInButtonReady(props: {
         )}
       </Pressable>
       {localError ? <Text style={styles.error}>{localError}</Text> : null}
-      {Platform.OS !== "web" ? (
-        <Text style={styles.hint}>
-          Откроется окно Google. После входа вернитесь в приложение.
-        </Text>
-      ) : null}
     </View>
   );
 }
@@ -206,11 +199,6 @@ function createStyles(colors: AppThemeColors) {
     error: {
       color: colors.error,
       fontSize: 13,
-      textAlign: "center",
-    },
-    hint: {
-      color: colors.textMuted,
-      fontSize: 12,
       textAlign: "center",
     },
   });

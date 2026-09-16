@@ -9,6 +9,7 @@ import {
 import type { OrdersScreenProps } from "./orders-screen.shared";
 import { BOTTOM_TAB_BAR_CONTENT_INSET, useBottomTabBarContentInset } from "../components/BottomTabBar";
 import { CARD_SHADOW } from "../lib/card-shadow.shared";
+import { DeliveryMapCard } from "../components/DeliveryMapCard";
 
 export function OrdersScreen(props: OrdersScreenProps) {
   const { colors } = useAppTheme();
@@ -56,6 +57,17 @@ export function OrdersScreen(props: OrdersScreenProps) {
             ) : null}
             {order.address ? (
               <Text style={styles.itemLine}>Адрес: {order.address}</Text>
+            ) : null}
+            {order.status === "CONFIRMED" ? (
+              <DeliveryMapCard
+                address={order.address}
+                shopLat={order.shopLat}
+                shopLng={order.shopLng}
+                destLat={order.destLat}
+                destLng={order.destLng}
+                etaMinutes={order.etaMinutes}
+                dgisUrl={order.dgisUrl}
+              />
             ) : null}
             {order.comment ? (
               <Text style={styles.itemLine}>Комментарий: {order.comment}</Text>
