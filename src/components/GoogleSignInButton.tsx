@@ -54,9 +54,7 @@ export function GoogleSignInButton(props: {
       <View style={styles.wrap}>
         <Pressable
           disabled={props.disabled}
-          onPress={() =>
-            setConfigError("Вход через Google сейчас недоступен");
-          }
+          onPress={() => setConfigError("Вход через Google сейчас недоступен")}
           style={[styles.button, props.disabled ? styles.buttonDisabled : null]}
         >
           <Text style={styles.buttonText}>Войти через Google</Text>

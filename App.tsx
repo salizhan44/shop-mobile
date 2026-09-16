@@ -2,6 +2,7 @@ import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -14,6 +15,7 @@ import {
   fetchCategories,
   addProductToCart,
   checkoutOrder,
+  deleteMyAccount,
   fetchCart,
   createSupportTicket,
   fetchOrderUpdates,
@@ -360,6 +362,49 @@ function AppContent() {
     setFavoritesOpen(false);
     onClearCatalogSearch();
     setScreen("login");
+  }
+
+  function requestDeleteAccount() {
+    Alert.alert(
+      "Удалить аккаунт?",
+      "Профиль, заказы и обращения удалятся. Восстановить нельзя.",
+      [
+        { text: "Отмена", style: "cancel" },
+        {
+          text: "Удалить",
+          style: "destructive",
+          onPress: () => {
+            void onDeleteAccount();
+          },
+        },
+      ],
+    );
+  }
+
+  async function onDeleteAccount() {
+    if (profilePending) {
+      return;
+    }
+    setProfilePending(true);
+    setProfileError("");
+    try {
+      await deleteMyAccount();
+    } catch (caught) {
+      setProfileError(
+        caught instanceof Error ? caught.message : "Не удалось удалить аккаунт",
+      );
+      setProfilePending(false);
+      return;
+    }
+    try {
+      await saveFavoriteIds([]);
+    } catch {
+      // локальные избранные не должны блокировать выход
+    }
+    setFavoriteIds([]);
+    setOrders([]);
+    setProfilePending(false);
+    await onLogout();
   }
 
   async function onToggleFavorite(productId: string) {
@@ -795,6 +840,7 @@ function AppContent() {
         onOpenSupport={() => setSupportOpen(true)}
         onOpenChangePassword={() => setChangePasswordOpen(true)}
         onLogout={onLogout}
+        onDeleteAccount={requestDeleteAccount}
       >
         {mainTab === "catalog" ? (
           <CatalogScreen
@@ -846,6 +892,7 @@ function AppContent() {
             onChangeAvatar={onChangeAvatar}
             onRemoveAvatar={onRemoveAvatar}
             onLogout={onLogout}
+            onDeleteAccount={requestDeleteAccount}
           />
         ) : null}
       </AppShell>

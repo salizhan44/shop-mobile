@@ -278,6 +278,13 @@ export function ProfileScreen(props: ProfileScreenProps) {
       <Pressable onPress={props.onLogout} style={styles.logoutButton}>
         <Text style={styles.logoutText}>Выйти</Text>
       </Pressable>
+      <Pressable
+        onPress={props.onDeleteAccount}
+        disabled={props.pending}
+        style={[styles.logoutButton, props.pending ? styles.disabled : null]}
+      >
+        <Text style={styles.logoutText}>Удалить аккаунт</Text>
+      </Pressable>
     </ScrollView>
   );
 }

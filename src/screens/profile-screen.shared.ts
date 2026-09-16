@@ -11,4 +11,5 @@ export type ProfileScreenProps = {
   onChangeAvatar: () => Promise<void>;
   onRemoveAvatar: () => Promise<void>;
   onLogout: () => void;
+  onDeleteAccount: () => void;
 };

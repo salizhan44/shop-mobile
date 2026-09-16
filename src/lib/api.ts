@@ -881,6 +881,16 @@ export async function changeMyPassword(input: {
   }
 }
 
+export async function deleteMyAccount(): Promise<void> {
+  const response = await authorizedFetch("/api/customer/me", {
+    method: "DELETE",
+  });
+  const data = await parseJson(response);
+  if (!response.ok) {
+    throw new Error(errorMessage(data, "Не удалось удалить аккаунт"));
+  }
+}
+
 export async function registerPushToken(
   token: string,
   platform: "ios" | "android" | "web" | "unknown",

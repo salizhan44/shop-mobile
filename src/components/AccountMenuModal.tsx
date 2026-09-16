@@ -9,6 +9,7 @@ export function AccountMenuModal(props: {
   onOpenSupport: () => void;
   onOpenChangePassword: () => void;
   onLogout: () => void;
+  onDeleteAccount: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const { colors, mode, toggleMode } = useAppTheme();
@@ -64,6 +65,18 @@ export function AccountMenuModal(props: {
               }}
             >
               <Text style={[styles.menuItemText, styles.danger]}>Выйти</Text>
+            </Pressable>
+            <View style={styles.separator} />
+            <Pressable
+              style={styles.menuItem}
+              onPress={() => {
+                props.onClose();
+                props.onDeleteAccount();
+              }}
+            >
+              <Text style={[styles.menuItemText, styles.danger]}>
+                Удалить аккаунт
+              </Text>
             </Pressable>
           </View>
         </View>

@@ -40,6 +40,7 @@ export function AppShell(props: AppShellProps) {
         onOpenSupport={props.onOpenSupport}
         onOpenChangePassword={props.onOpenChangePassword}
         onLogout={props.onLogout}
+        onDeleteAccount={props.onDeleteAccount}
       />
     </View>
   );

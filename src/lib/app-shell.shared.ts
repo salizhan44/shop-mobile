@@ -31,6 +31,7 @@ export type AppShellProps = {
   onOpenSupport: () => void;
   onOpenChangePassword: () => void;
   onLogout: () => void;
+  onDeleteAccount: () => void;
   children: ReactNode;
 };
 
