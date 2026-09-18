@@ -4,48 +4,73 @@
 
 API и база — в репозитории [shop-admin](https://github.com/salizhan44/shop-admin) (ветка `dev`). Сначала поднимите сайт и Postgres там.
 
-## Требования
+## Как открыть у себя с GitHub
+
+Это **два** репозитория. Сайт должен уже быть запущен (порт 3000), иначе приложение не к чему стучаться.
+
+**Клонируйте ветку `dev`.** Кнопка Code на GitHub берёт `main` — там пустой первый коммит, приложения нет.
+
+```bash
+git clone -b dev https://github.com/salizhan44/shop-admin.git
+git clone -b dev https://github.com/salizhan44/shop-mobile.git
+```
+
+Если уже клонировали без `-b dev`:
+
+```bash
+git checkout dev
+git pull origin dev
+```
+
+Сайт: README [shop-admin](https://github.com/salizhan44/shop-admin/blob/dev/README.md), раздел **Как открыть у себя с GitHub**. Ниже — только приложение.
+
+### Что нужно на компьютере
 
 - Node.js 20+
 - Android Studio, JDK 17, Android SDK
-- Физический Android-телефон в той же Wi‑Fi, что и компьютер (для пушей надёжнее эмулятора)
 - Запущенный `shop-admin` (`npm run dev` на порту 3000)
+- Телефон или эмулятор. Для пушей надёжнее физический Android в той же Wi‑Fi, что и компьютер
 
-**Expo Go не используйте** для проверки уведомлений: нужен development build (`expo-dev-client`). После смены `google-services.json` приложение пересоберите, не только Metro.
+**Expo Go не используйте** для пушей: нужен development build (`expo-dev-client`). После смены `google-services.json` приложение пересоберите, не только Metro.
 
 На Windows, если `npx` ругается на политику выполнения, вызывайте `npx.cmd`.
 
-## Первый запуск
+### Сборка и запуск
 
 ```bash
+cd shop-mobile
 npm install
 cp .env.example .env
 ```
 
-Положите настоящий `google-services.json` из Firebase (Android-приложение с package `com.rola.shop`) в корень `mobile/`. Файл в git не попадает; шаблон — `google-services.json.example`.
+В PowerShell: `Copy-Item .env.example .env`
 
-Папка `android/` в репозитории не хранится. Первая нативная сборка создаст её сама:
+Узнайте IP компьютера в той же Wi‑Fi, что и телефон (в Windows: `ipconfig`, строка IPv4). В `.env` поставьте **свой** IP, не чужой из примера:
+
+```
+EXPO_PUBLIC_API_URL=http://192.168.1.10:3000
+```
+
+На эмуляторе Android API часто `http://10.0.2.2:3000`. Если открываете API в браузере на том же ПК — `http://localhost:3000`.
+
+`google-services.json` нужен **только для пушей**. Каталог, корзина, заказы, профиль и удаление аккаунта работают без него. Если пуши проверяете — положите настоящий файл из Firebase (package `com.rola.shop`) в корень `shop-mobile/`. В git его нет; шаблон — `google-services.json.example`.
+
+Папка `android/` в репозитории не хранится. Первая нативная сборка создаёт её сама (телефон/эмулятор подключены, USB-отладка включена):
 
 ```bash
 npx expo run:android
 ```
 
-Дальше, когда нативка уже стоит на телефоне, достаточно Metro:
+Дальше, когда приложение уже стоит на устройстве, достаточно Metro. Подставьте **свой** IP:
 
 ```powershell
 $env:REACT_NATIVE_PACKAGER_HOSTNAME="192.168.1.10"
 npx expo start --dev-client --lan --port 8081
 ```
 
-Подставьте **свой** IP ноутбука вместо `192.168.1.10`. Телефон и компьютер — в одной Wi‑Fi сети.
+Телефон и компьютер — в одной Wi‑Fi. Если каталог не грузится: Windows Firewall не должен резать порты **3000** и **8081**.
 
-В `.env` для телефона:
-
-```
-EXPO_PUBLIC_API_URL=http://192.168.1.10:3000
-```
-
-На эмуляторе Android API часто `http://10.0.2.2:3000`. В браузере / на том же ПК — `http://localhost:3000` из `.env.example`.
+Клиента в базе нет — регистрируйтесь в приложении (пароль от 8 символов). На сайт сотрудником: `owner@local.test` / `changeme`.
 
 ## Вход в приложение (клиент)
 
@@ -157,4 +182,4 @@ npx tsc --noEmit
 
 ## Ветки
 
-Рабочая ветка: **`dev`**.
+Рабочая ветка: **`dev`**. Клон без `-b dev` даёт пустой `main` — так приложение не откроется.
